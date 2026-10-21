@@ -25,6 +25,7 @@ from . import io
 from .asset_issues import asset_issue_matches_revision, known_asset_issues
 from .context import current_paths
 from .profiles import GOAL_PLUS_METHODS, LEGACY_PAPER_PROTOCOL_ISSUES
+from .sat_evidence import sat_metrics_from_archive
 
 
 def iter_json_lines(text: str) -> Iterable[dict[str, Any]]:
@@ -576,6 +577,7 @@ def goal_plus_stats(task_run: Path) -> dict[str, Any] | None:
             "states": dict(sorted(annotation_states.items())),
             "coverage": "persisted Goal Plus Evidence annotator turns",
         },
+        "sat": sat_metrics_from_archive(archive_path),
     }
 
 
@@ -1227,6 +1229,8 @@ def summarize_cell(destination: Path, cell: dict[str, Any]) -> dict[str, Any]:
         "expected_trajectories": cell["outer_replicas"],
         "completed_trajectories": len(observations),
         "valid_trajectories": len(valid),
+        "sat_experiment_mode": cell.get("experiment_mode"),
+        "sat": ((best or {}).get("goal_plus") or {}).get("sat"),
         "observations": observations,
         "best": best,
         "completion_evidence": completion_evidence,

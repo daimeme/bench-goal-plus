@@ -49,6 +49,7 @@ from bench_goal_plus.goal_plus_command import (  # noqa: E402
 from bench_goal_plus.goal_plus_evidence import (  # noqa: E402
     frozen_agent_harness,
     overlapping_bound_candidates,
+    sat_metrics,
     session_agent_harness,
     session_worker_intervals,
     summarize_worker_concurrency,
@@ -969,6 +970,7 @@ def render_goal(
     outer_deadline_at: str | None = None,
     public_feedback_command: str = "python3 evaluate.py",
     candidate_judge_mode: str = MODE_OFF,
+    sat_experiment_mode: str | None = None,
 ) -> str:
     """Add the host-native Goal Plus entrypoint and config to the common prompt."""
     if evaluation_mode is None:
@@ -1033,6 +1035,28 @@ def render_goal(
             "AtomicPlan before each material edit or evaluator call and close an accepted plan "
             f"with its verifier result. {mode_behavior}"
         )
+    sat_text = ""
+    if sat_experiment_mode:
+        sat_text = (
+            f"- SAT-GP arm `{sat_experiment_mode.upper()}` is frozen by the host "
+            "controller at SearchSpec freeze through "
+            f"`GOAL_PLUS_CONTROLLER_EXPERIMENT` with mode "
+            f"`{sat_experiment_mode}`.\n"
+            "- Do not set or override `strategy.verifier`, `strategy.steering`, "
+            "`shared_cache`, or `strategy.config.collaboration_protocol` yourself; "
+            "the controller-owned overlay installs the arm's verifier, steering "
+            "policy, shared cache, and collaboration protocol at freeze time.\n"
+            "- Keep the pre-freeze spec on `strategy.orchestration_mode=\"parallel_loops\"` "
+            "and leave `strategy.allocation` unset. For A3-A5 the controller may switch "
+            "the frozen spec to `adaptive_search` to enable steering; do not create "
+            "allocation decisions.\n"
+        )
+        if sat_experiment_mode == "a5":
+            sat_text += (
+                "- Follow the fixed role and phase instructions injected into "
+                "your candidate context. SAT-GP v2 certificates and repair "
+                "credentials are runtime evidence, not prompt choices.\n"
+            )
     initial_launch_contract = (
         "- After `goal_plus_search_plan_next`, call `goal_plus_search_start_batch` "
         "once to materialize the candidates. Start each candidate with "
@@ -1151,6 +1175,7 @@ def render_goal(
             f"{initial_launch_contract}"
             f"{time_planning}"
             f"{coordination_text}"
+            f"{sat_text}"
             f"- Metric: `{metric_name}` with direction `{metric_direction}`; it is a public "
             "format gate only. No official evaluation value may enter this Search run.\n"
             "- Process verifier: `python3 public_check.py`, role `validity_gate`, feedback "
@@ -1238,6 +1263,7 @@ def render_goal(
         f"{initial_launch_contract}"
         f"{time_planning}"
         f"{coordination_text}"
+        f"{sat_text}"
         f"- Metric: `{metric_name}` with direction `{metric_direction}`.\n"
         "- Process verifier: `python3 .goal-plus-verifiers/primary_metric.py`, role "
         "`ranking_signal`, feedback policy `summary_only`, timeout "
@@ -1319,6 +1345,14 @@ def codex_goal_plus_mcp_args(extra_env_vars: tuple[str, ...] = ()) -> list[str]:
         "OPENAI_API_KEY",
         "SFORGE_AGENT_API_KEY",
         "GOAL_PLUS_OUTER_DEADLINE_AT",
+        "GOAL_PLUS_CONTROLLER_EXPERIMENT",
+        "GOAL_PLUS_CONTROLLER_SHARED_CACHE",
+        "GOAL_PLUS_GLOBAL_EVIDENCE_MODE",
+        "GOAL_PLUS_EVIDENCE_ANNOTATOR_DISABLED",
+        "GOAL_PLUS_CONTROLLER_ONLY_CLOSEOUT",
+        "GOAL_PLUS_SUPPLEMENTAL_EVALUATION_ENABLED",
+        "GOAL_PLUS_SUPPLEMENTAL_EVALUATION_REQUIRED",
+        "GOAL_PLUS_VERIFIER_TMPDIR",
         "GOAL_PLUS_EVIDENCE_ANNOTATOR_MODEL",
         "GOAL_PLUS_EVIDENCE_ANNOTATOR_REASONING_EFFORT",
         "GOAL_PLUS_EVIDENCE_ANNOTATOR_BASE_URL",
@@ -2229,6 +2263,9 @@ def collect_goal_plus_state(workspace: Path) -> dict[str, Any]:
         )
         iteration_count = 0
         best_scores: list[float] = []
+        candidate_best_scores: dict[str, float] = {}
+        candidate_iteration_counts: dict[str, int] = {}
+        candidate_valid_iteration_counts: dict[str, int] = {}
         hosts: set[str] = set()
         bound_candidate_ids: set[str] = set()
         worker_verified_candidate_ids: set[str] = set()
@@ -2250,13 +2287,25 @@ def collect_goal_plus_state(workspace: Path) -> dict[str, Any]:
             iterations = candidate.get("iterations")
             if isinstance(iterations, list):
                 iteration_count += len(iterations)
-                best_scores.extend(
+                candidate_scores = [
                     float(item["score"])
                     for item in iterations
                     if isinstance(item, dict)
                     and isinstance(item.get("score"), (int, float))
                     and item.get("process_passed") is not False
-                )
+                ]
+                best_scores.extend(candidate_scores)
+                if isinstance(candidate_id, str):
+                    candidate_iteration_counts[candidate_id] = len(iterations)
+                    candidate_valid_iteration_counts[candidate_id] = len(
+                        candidate_scores
+                    )
+                    if candidate_scores:
+                        candidate_best_scores[candidate_id] = (
+                            max(candidate_scores)
+                            if metric_direction == "maximize"
+                            else min(candidate_scores)
+                        )
         for session_path in session_paths:
             session = load_json(session_path)
             if isinstance(session.get("agent_harness"), str):
@@ -2344,10 +2393,35 @@ def collect_goal_plus_state(workspace: Path) -> dict[str, Any]:
                 ),
                 "recorded_score_min": min(best_scores) if best_scores else None,
                 "recorded_score_max": max(best_scores) if best_scores else None,
+                "candidate_best_scores": candidate_best_scores,
+                "candidate_iteration_counts": candidate_iteration_counts,
+                "candidate_valid_iteration_counts": candidate_valid_iteration_counts,
+                "best_candidate_id": (
+                    max(
+                        candidate_best_scores,
+                        key=lambda key: candidate_best_scores[key],
+                    )
+                    if candidate_best_scores and metric_direction == "maximize"
+                    else min(
+                        candidate_best_scores,
+                        key=lambda key: candidate_best_scores[key],
+                    )
+                    if candidate_best_scores
+                    else None
+                ),
+                "best_candidate_score": (
+                    max(candidate_best_scores.values())
+                    if candidate_best_scores and metric_direction == "maximize"
+                    else min(candidate_best_scores.values())
+                    if candidate_best_scores
+                    else None
+                ),
+                "selected_candidate_id": payload.get("selected_candidate_id"),
                 "selected_score": payload.get("selected_score"),
                 "hosts": sorted(hosts),
                 "report_exists": (run_dir / "report.md").is_file(),
                 "search_space": search_space,
+                "sat": sat_metrics(run_dir),
             }
         )
     return {

@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from bench_runtime_paths import configure_temp_environment
+from bench_goal_plus.sat_contract import sat_controller_environment
 
 from . import io
 from .context import current_paths
@@ -267,6 +268,7 @@ def cell_environment(
         env["SFORGE_GOAL_PLUS_SOURCE_DIR"] = str(
             goal_plus_source.get("source_dir") or current_paths().goal_plus_root
         )
+        sat_mode = cell.get("experiment_mode")
         extra_env = {
             "SFORGE_GOAL_PLUS_PARALLEL_NUM": str(cell["inner_search_concurrency"]),
             "SFORGE_GOAL_PLUS_WORKER_RUNTIME_SECONDS": str(
@@ -290,12 +292,19 @@ def cell_environment(
             "GOAL_PLUS_SUPPLEMENTAL_EVALUATION_REQUIRED": (
                 "1" if cell.get("supplemental_evaluation_enabled", False) else "0"
             ),
-            "GOAL_PLUS_EVIDENCE_ANNOTATOR_MODEL": annotator_model,
-            "GOAL_PLUS_EVIDENCE_ANNOTATOR_REASONING_EFFORT": str(
-                cell.get("evidence_annotator_reasoning_effort")
-                or cell["reasoning_effort"]
-            ),
         }
+        if sat_mode:
+            extra_env.update(sat_controller_environment(str(sat_mode)))
+        else:
+            extra_env.update(
+                {
+                    "GOAL_PLUS_EVIDENCE_ANNOTATOR_MODEL": annotator_model,
+                    "GOAL_PLUS_EVIDENCE_ANNOTATOR_REASONING_EFFORT": str(
+                        cell.get("evidence_annotator_reasoning_effort")
+                        or cell["reasoning_effort"]
+                    ),
+                }
+            )
         if cell["method"] in {"goal-plus-pi", "goal-plus-pi-provider"}:
             extra_env.update(
                 {
@@ -336,7 +345,9 @@ def cell_environment(
             )
             if auxiliary_models:
                 extra_env["SFORGE_PI_AUX_MODELS"] = " ".join(auxiliary_models)
-        if api_base_url:
+        if sat_mode:
+            extra_env.pop("SFORGE_GOAL_PLUS_EVIDENCE_ANNOTATOR_TIMEOUT_SECONDS", None)
+        if api_base_url and not sat_mode:
             extra_env.update(
                 {
                     "GOAL_PLUS_EVIDENCE_ANNOTATOR_BASE_URL": api_base_url,

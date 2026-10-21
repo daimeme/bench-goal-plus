@@ -629,6 +629,206 @@
       }
     },
     {
+      "id": "edgebench-vliw-sat-a1-2h",
+      "description": "VLIW SAT Phase 1 arm A1 with Goal Plus + Pi provider, deepseek/deepseek-v4-flash, T=7200, K=4, C=1, R=1.",
+      "benchmarks": [
+        "edgebench"
+      ],
+      "profile": "vliw-sat-a1-pi-deepseek-v4-flash-2h-k4-c1",
+      "campaign_id_template": "edgebench-vliw-sat-a1-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": [
+          "goal-plus-pi-provider"
+        ],
+        "model": "deepseek/deepseek-v4-flash",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1
+      }
+    },
+    {
+      "id": "edgebench-vliw-sat-a2-2h",
+      "description": "VLIW SAT Phase 1 arm A2 with Goal Plus + Pi provider, deepseek/deepseek-v4-flash, T=7200, K=4, C=1, R=1.",
+      "benchmarks": [
+        "edgebench"
+      ],
+      "profile": "vliw-sat-a2-pi-deepseek-v4-flash-2h-k4-c1",
+      "campaign_id_template": "edgebench-vliw-sat-a2-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": [
+          "goal-plus-pi-provider"
+        ],
+        "model": "deepseek/deepseek-v4-flash",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1
+      }
+    },
+    {
+      "id": "edgebench-vliw-sat-a3-2h",
+      "description": "VLIW SAT Phase 1 arm A3 with Goal Plus + Pi provider, deepseek/deepseek-v4-flash, T=7200, K=4, C=1, R=1.",
+      "benchmarks": [
+        "edgebench"
+      ],
+      "profile": "vliw-sat-a3-pi-deepseek-v4-flash-2h-k4-c1",
+      "campaign_id_template": "edgebench-vliw-sat-a3-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": [
+          "goal-plus-pi-provider"
+        ],
+        "model": "deepseek/deepseek-v4-flash",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1
+      }
+    },
+    {
+      "id": "edgebench-vliw-sat-a4-2h",
+      "description": "VLIW SAT Phase 1 arm A4 with Goal Plus + Pi provider, deepseek/deepseek-v4-flash, T=7200, K=4, C=1, R=1.",
+      "benchmarks": [
+        "edgebench"
+      ],
+      "profile": "vliw-sat-a4-pi-deepseek-v4-flash-2h-k4-c1",
+      "campaign_id_template": "edgebench-vliw-sat-a4-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": [
+          "goal-plus-pi-provider"
+        ],
+        "model": "deepseek/deepseek-v4-flash",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1
+      }
+    },
+    {
+      "id": "edgebench-vliw-sat-a5-2h",
+      "description": "VLIW SAT Phase 1 arm A5 with Goal Plus + Pi provider, deepseek/deepseek-v4-flash, T=7200, K=4, C=1, R=1.",
+      "benchmarks": [
+        "edgebench"
+      ],
+      "profile": "vliw-sat-a5-pi-deepseek-v4-flash-2h-k4-c1",
+      "campaign_id_template": "edgebench-vliw-sat-a5-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": [
+          "goal-plus-pi-provider"
+        ],
+        "model": "deepseek/deepseek-v4-flash",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1
+      }
+    },
+    {
+      "id": "edgebench-vliw-sat-a1-codex-2h",
+      "description": "VLIW SAT Phase 1 arm A1 with Goal Plus + Codex, gpt-5.6-sol medium reasoning, T=7200, K=4, C=1, R=1.",
+      "benchmarks": [
+        "edgebench"
+      ],
+      "profile": "vliw-sat-a1-codex-gpt-5-6-sol-2h-k4-c1",
+      "campaign_id_template": "edgebench-vliw-sat-a1-codex-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": [
+          "goal-plus-codex"
+        ],
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1
+      }
+    },
+    {
+      "id": "edgebench-vliw-sat-a2-codex-2h",
+      "description": "VLIW SAT Phase 1 arm A2 with Goal Plus + Codex, gpt-5.6-sol medium reasoning, T=7200, K=4, C=1, R=1.",
+      "benchmarks": [
+        "edgebench"
+      ],
+      "profile": "vliw-sat-a2-codex-gpt-5-6-sol-2h-k4-c1",
+      "campaign_id_template": "edgebench-vliw-sat-a2-codex-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": [
+          "goal-plus-codex"
+        ],
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1
+      }
+    },
+    {
+      "id": "edgebench-vliw-sat-a3-codex-2h",
+      "description": "VLIW SAT Phase 1 arm A3 with Goal Plus + Codex, gpt-5.6-sol medium reasoning, T=7200, K=4, C=1, R=1.",
+      "benchmarks": [
+        "edgebench"
+      ],
+      "profile": "vliw-sat-a3-codex-gpt-5-6-sol-2h-k4-c1",
+      "campaign_id_template": "edgebench-vliw-sat-a3-codex-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": [
+          "goal-plus-codex"
+        ],
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1
+      }
+    },
+    {
+      "id": "edgebench-vliw-sat-a4-codex-2h",
+      "description": "VLIW SAT Phase 1 arm A4 with Goal Plus + Codex, gpt-5.6-sol medium reasoning, T=7200, K=4, C=1, R=1.",
+      "benchmarks": [
+        "edgebench"
+      ],
+      "profile": "vliw-sat-a4-codex-gpt-5-6-sol-2h-k4-c1",
+      "campaign_id_template": "edgebench-vliw-sat-a4-codex-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": [
+          "goal-plus-codex"
+        ],
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1
+      }
+    },
+    {
+      "id": "edgebench-vliw-sat-a5-codex-2h",
+      "description": "VLIW SAT Phase 1 arm A5 with Goal Plus + Codex, gpt-5.6-sol medium reasoning, T=7200, K=4, C=1, R=1.",
+      "benchmarks": [
+        "edgebench"
+      ],
+      "profile": "vliw-sat-a5-codex-gpt-5-6-sol-2h-k4-c1",
+      "campaign_id_template": "edgebench-vliw-sat-a5-codex-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": [
+          "goal-plus-codex"
+        ],
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1
+      }
+    },
+    {
       "id": "swe-bench-verified-sympy-16886-codex-smoke",
       "description": "One-instance SWE-bench Verified Plain Codex official-harness smoke with T=1800, K=1, C=1, R=1.",
       "benchmarks": ["swe-bench-verified"],
@@ -779,6 +979,139 @@
         "wall_time_seconds": 300,
         "concurrency": 1,
         "cell_concurrency": 1
+      }
+    },
+    {
+      "id": "local-vliw-sat-a1-2h",
+      "description": "SAT A1 (Goal Plus + Pi) local VLIW: four-way parallel search baseline, deepseek-v4-flash medium, T=2h, K=4, C=1, R=1.",
+      "benchmarks": ["local-vliw"],
+      "profile": "benchmarks/profiles/vliw-sat/vliw-sat-a1-2h-deepseek-v4-flash-medium.json",
+      "conditions": ["A1"],
+      "campaign_id_template": "local-vliw-sat-a1-2h-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": ["goal-plus-pi"],
+        "conditions": ["A1"],
+        "model": "deepseek-v4-flash",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1,
+        "worker_runtime_seconds": 6600
+      }
+    },
+    {
+      "id": "local-vliw-sat-a2-2h",
+      "description": "SAT A2 (Goal Plus + Pi) local VLIW: add shared Evidence/cache, deepseek-v4-flash medium, T=2h, K=4, C=1, R=1.",
+      "benchmarks": ["local-vliw"],
+      "profile": "benchmarks/profiles/vliw-sat/vliw-sat-a2-2h-deepseek-v4-flash-medium.json",
+      "conditions": ["A2"],
+      "campaign_id_template": "local-vliw-sat-a2-2h-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": ["goal-plus-pi"],
+        "conditions": ["A2"],
+        "model": "deepseek-v4-flash",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1,
+        "worker_runtime_seconds": 6600
+      }
+    },
+    {
+      "id": "local-vliw-sat-a3-2h",
+      "description": "SAT A3 (Goal Plus + Pi) local VLIW: add verifier shadow recognition, deepseek-v4-flash medium, T=2h, K=4, C=1, R=1.",
+      "benchmarks": ["local-vliw"],
+      "profile": "benchmarks/profiles/vliw-sat/vliw-sat-a3-2h-deepseek-v4-flash-medium.json",
+      "conditions": ["A3"],
+      "campaign_id_template": "local-vliw-sat-a3-2h-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": ["goal-plus-pi"],
+        "conditions": ["A3"],
+        "model": "deepseek-v4-flash",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1,
+        "worker_runtime_seconds": 6600
+      }
+    },
+    {
+      "id": "local-vliw-sat-a4-2h",
+      "description": "SAT A4 (Goal Plus + Pi) local VLIW: add asynchronous steering repair, deepseek-v4-flash medium, T=2h, K=4, C=1, R=1.",
+      "benchmarks": ["local-vliw"],
+      "profile": "benchmarks/profiles/vliw-sat/vliw-sat-a4-2h-deepseek-v4-flash-medium.json",
+      "conditions": ["A4"],
+      "campaign_id_template": "local-vliw-sat-a4-2h-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": ["goal-plus-pi"],
+        "conditions": ["A4"],
+        "model": "deepseek-v4-flash",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1,
+        "worker_runtime_seconds": 6600
+      }
+    },
+    {
+      "id": "local-vliw-sat-a5-2h",
+      "description": "SAT A5 (Goal Plus + Pi) local VLIW: SAT-GP v2 structured collaboration, deepseek-v4-flash medium, T=2h, K=4, C=1, R=1.",
+      "benchmarks": ["local-vliw"],
+      "profile": "benchmarks/profiles/vliw-sat/vliw-sat-a5-2h-deepseek-v4-flash-medium.json",
+      "conditions": ["A5"],
+      "campaign_id_template": "local-vliw-sat-a5-2h-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": ["goal-plus-pi"],
+        "conditions": ["A5"],
+        "model": "deepseek-v4-flash",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1,
+        "worker_runtime_seconds": 6600
+      }
+    },
+    {
+      "id": "local-vliw-sat-pilot-30m",
+      "description": "SAT Phase 0 pilot (Goal Plus + Pi): A1-A3 local VLIW matrix, deepseek-v4-flash medium, T=30m, K=4, C=1. Run three independent campaigns for variance.",
+      "benchmarks": ["local-vliw"],
+      "profile": "benchmarks/profiles/vliw-sat/vliw-sat-pilot-30m-deepseek-v4-flash-medium.json",
+      "conditions": ["A1", "A2", "A3"],
+      "campaign_id_template": "local-vliw-sat-pilot-30m-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": ["goal-plus-pi"],
+        "conditions": ["A1", "A2", "A3"],
+        "model": "deepseek-v4-flash",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 1800,
+        "concurrency": 4,
+        "cell_concurrency": 1,
+        "worker_runtime_seconds": 1500
+      }
+    },
+    {
+      "id": "local-vliw-sat-matrix-2h",
+      "description": "SAT A1-A5 (Goal Plus + Pi) local VLIW matrix in one campaign: matched deepseek-v4-flash medium, T=2h, K=4, C=1, R=1, paired by task and seed.",
+      "benchmarks": ["local-vliw"],
+      "profile": "benchmarks/profiles/vliw-sat/vliw-sat-matrix-2h-deepseek-v4-flash-medium.json",
+      "conditions": ["A1", "A2", "A3", "A4", "A5"],
+      "campaign_id_template": "local-vliw-sat-matrix-2h-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": ["goal-plus-pi"],
+        "conditions": ["A1", "A2", "A3", "A4", "A5"],
+        "model": "deepseek-v4-flash",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1,
+        "worker_runtime_seconds": 6600
       }
     }
   ]

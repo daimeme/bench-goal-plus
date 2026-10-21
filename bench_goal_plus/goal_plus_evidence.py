@@ -1,7 +1,10 @@
 """Read Goal Plus execution identities and summarize native worker evidence."""
 
+from collections import Counter
 from collections.abc import Iterable, Mapping
 from datetime import datetime
+import json
+from pathlib import Path
 from typing import Any, Literal
 
 
@@ -235,3 +238,491 @@ def frozen_agent_harness(frozen: Mapping[str, Any]) -> Literal["codex", "pi"] | 
     if agent_harness in ("codex", "pi"):
         return agent_harness
     return None
+
+
+SAT_TEXT_SCORE_KEYS = (
+    "claim_specificity",
+    "evidence_grounding",
+    "causal_coherence",
+    "repair_actionability",
+    "uncertainty_calibration",
+)
+SAT_DIAGNOSTIC_SCORE_KEYS = (
+    "correctness_gap",
+    "validation_gap",
+    "local_confounder_evidence",
+    "discriminating_test_gap",
+    "boundary_evidence_strength",
+)
+
+
+def _read_json(path: Path) -> dict[str, Any]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _read_jsonl(path: Path) -> list[dict[str, Any]]:
+    if not path.is_file():
+        return []
+    rows: list[dict[str, Any]] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict):
+            rows.append(payload)
+    return rows
+
+
+def collaboration_snapshot(run_dir: Path) -> dict[str, Any]:
+    """Read the SAT-GP collaboration ledger without importing goal_plus.
+
+    The runtime writes append-only events under
+    ``.gp/runs/<run_id>/collaboration/`` and one JSON certificate per
+    candidate phase.  Keeping this reader schema-only lets old runtimes and
+    non-SAT arms report an explicit empty ledger instead of failing.
+    """
+
+    root = run_dir / "collaboration"
+    events = _read_jsonl(root / "events.jsonl")
+    certificates = [
+        payload
+        for path in sorted((root / "certificates").glob("*/*.json"))
+        for payload in [_read_json(path)]
+        if payload
+    ]
+    event_counts = Counter(str(item.get("kind") or "unknown") for item in events)
+    phase_counts = Counter(str(item.get("phase") or "unknown") for item in events)
+    claim_statuses: Counter[str] = Counter()
+    claims_total = 0
+    peer_audits_total = 0
+    for certificate in certificates:
+        claims = certificate.get("claims")
+        if isinstance(claims, list):
+            claims_total += len(claims)
+            claim_statuses.update(
+                str(claim.get("status"))
+                for claim in claims
+                if isinstance(claim, Mapping) and claim.get("status")
+            )
+        audits = certificate.get("peer_audits")
+        if isinstance(audits, list):
+            peer_audits_total += len(audits)
+    status = "present" if events or certificates else "absent"
+    return {
+        "status": status,
+        "protocol": next(
+            (
+                item.get("protocol")
+                for item in certificates
+                if isinstance(item.get("protocol"), str)
+            ),
+            "sat-gp/v2",
+        ),
+        "events_total": len(events),
+        "event_counts": dict(sorted(event_counts.items())),
+        "phase_event_counts": dict(sorted(phase_counts.items())),
+        "phase_transitions": [
+            {
+                "phase": item.get("phase"),
+                "kind": item.get("kind"),
+                "at": item.get("at"),
+            }
+            for item in events
+            if item.get("kind") in {"phase_started", "phase_completed"}
+        ],
+        "certificates_total": len(certificates),
+        "claims_total": claims_total,
+        "claim_status_counts": dict(sorted(claim_statuses.items())),
+        "peer_audits_total": peer_audits_total,
+        "evidence_reads_total": event_counts.get("evidence_read", 0),
+    }
+
+
+def steering_snapshot(run_dir: Path) -> dict[str, Any]:
+    """Summarize SAT verifier/steering artifacts for one Search run."""
+
+    attempts = [
+        payload
+        for path in sorted((run_dir / "steering-attempts").glob("*.json"))
+        for payload in [_read_json(path)]
+        if payload
+    ]
+    diagnostics = [
+        payload
+        for path in sorted((run_dir / "steering-diagnostics").glob("*.json"))
+        for payload in [_read_json(path)]
+        if payload
+    ]
+    delivery_modes = Counter(
+        str((item.get("delivery") or {}).get("mode") or "unknown")
+        for item in attempts
+    )
+    observations = Counter(str(item.get("observation") or "unknown") for item in attempts)
+    actions = Counter(
+        str(item.get("action") or "no_supported_action") for item in attempts
+    )
+    diagnostic_actions: Counter[str] = Counter()
+    diagnostic_modes: Counter[str] = Counter()
+    for item in diagnostics:
+        result = item.get("result") if isinstance(item.get("result"), dict) else {}
+        diagnostic_actions.update([str(result.get("action") or "no_op")])
+        diagnostic_modes.update([str(item.get("mode") or "unknown")])
+    return {
+        "steering_attempts": len(attempts),
+        "steering_shadow_evaluations": diagnostic_modes.get("shadow", 0),
+        "steering_apply_evaluations": diagnostic_modes.get("apply", 0),
+        "steering_delivery_modes": dict(sorted(delivery_modes.items())),
+        "steering_observations": dict(sorted(observations.items())),
+        "steering_actions": dict(sorted(actions.items())),
+        "steering_diagnostics": len(diagnostics),
+        "steering_diagnostic_actions": dict(sorted(diagnostic_actions.items())),
+        "steering_diagnostic_modes": dict(sorted(diagnostic_modes.items())),
+        "steering_applied": sum(
+            1
+            for item in attempts
+            if item.get("observation") == "returned"
+            and (item.get("delivery") or {}).get("mode") == "apply"
+        ),
+        "steering_not_delivered": sum(
+            1
+            for item in attempts
+            if item.get("observation") in {"not_sent", "unknown"}
+        ),
+    }
+
+
+def global_evidence_reads(run_dir: Path) -> dict[str, Any]:
+    """Count persisted Global Evidence read receipts and their readers."""
+
+    reads: list[dict[str, Any]] = []
+    candidates: set[str] = set()
+    for path in sorted((run_dir / "agent_sessions").glob("agent_*.json")):
+        session = _read_json(path)
+        records = session.get("global_evidence_reads")
+        if not isinstance(records, list) or not records:
+            continue
+        reads.extend(item for item in records if isinstance(item, dict))
+        candidate_id = session.get("candidate_id")
+        if isinstance(candidate_id, str) and candidate_id:
+            candidates.add(candidate_id)
+    sources = Counter(str(item.get("source") or "unknown") for item in reads)
+    peer_reads = sum(
+        1
+        for item in reads
+        if isinstance(item.get("completed_view_count"), int)
+        and item["completed_view_count"] > 1
+    )
+    return {
+        "global_evidence_reads": len(reads),
+        "global_evidence_peer_reads": peer_reads,
+        "global_evidence_read_sources": dict(sorted(sources.items())),
+        "global_evidence_reader_candidates": sorted(candidates),
+        "global_evidence_reader_candidate_count": len(candidates),
+    }
+
+
+def shared_cache_snapshot(run_dir: Path) -> dict[str, Any]:
+    """Summarize the shared-cache fact log for the A2 sharing arm."""
+
+    records = [
+        payload
+        for path in sorted((run_dir / "shared-cache").glob("*.json"))
+        for payload in [_read_json(path)]
+        if payload
+    ]
+    sections = Counter(str(item.get("section") or "unknown") for item in records)
+    writers = Counter(str(item.get("writer") or "unknown") for item in records)
+    candidate_writers = {
+        str(item.get("writer")).partition(":")[2]
+        for item in records
+        if str(item.get("writer") or "").startswith("candidate:")
+        and str(item.get("writer")).partition(":")[2]
+    }
+    return {
+        "shared_cache_records": len(records),
+        "shared_cache_sections": dict(sorted(sections.items())),
+        "shared_cache_writers": dict(sorted(writers.items())),
+        "shared_cache_candidate_writers": sorted(candidate_writers),
+        "shared_cache_candidate_writer_count": len(candidate_writers),
+        "shared_cache_supersedes": sum(
+            1 for item in records if item.get("supersedes")
+        ),
+        "shared_cache_with_evidence": sum(
+            1 for item in records if item.get("evidence_ref")
+        ),
+    }
+
+
+def verifier_snapshot(run_dir: Path) -> dict[str, Any]:
+    """Summarize LLM verifier records, including SAT text-description scores."""
+
+    records = [
+        payload
+        for path in sorted((run_dir / "verifier" / "tasks").glob("verifier_*.json"))
+        for payload in [_read_json(path)]
+        if payload
+    ]
+    completed = [item for item in records if item.get("outcome") == "completed"]
+    failed = [item for item in records if item.get("outcome") == "failed"]
+    score_totals: dict[str, float] = {}
+    score_counts: Counter[str] = Counter()
+    for item in completed:
+        scores = item.get("scores")
+        if not isinstance(scores, dict):
+            continue
+        for key, value in scores.items():
+            if isinstance(value, (int, float)):
+                score_totals[str(key)] = score_totals.get(str(key), 0.0) + float(value)
+                score_counts[str(key)] += 1
+    text_means = {
+        key: round(score_totals[key] / score_counts[key], 6)
+        for key in SAT_TEXT_SCORE_KEYS
+        if score_counts.get(key)
+    }
+    diagnostic_means = {
+        key: round(score_totals[key] / score_counts[key], 6)
+        for key in SAT_DIAGNOSTIC_SCORE_KEYS
+        if score_counts.get(key)
+    }
+    return {
+        "verifier_records": len(records),
+        "verifier_completed": len(completed),
+        "verifier_failed": len(failed),
+        "verifier_scored_records": sum(1 for item in completed if item.get("scores")),
+        "verifier_text_score_means": text_means,
+        "verifier_diagnostic_score_means": diagnostic_means,
+        "verifier_with_diagnostics": sum(
+            1 for item in completed if item.get("steering_findings") is not None
+        ),
+        "verifier_usage_tokens": sum(
+            int(sum(
+                value
+                for key, value in (item.get("usage") or {}).items()
+                if key.endswith("tokens")
+                and isinstance(value, (int, float))
+            ))
+            for item in completed
+        ),
+    }
+
+
+def sat_metrics(run_dir: Path) -> dict[str, Any]:
+    """Return the SAT mechanism evidence attached to one Goal Plus run."""
+
+    return {
+        "verifier": verifier_snapshot(run_dir),
+        "steering": steering_snapshot(run_dir),
+        "evidence": global_evidence_reads(run_dir),
+        "shared_cache": shared_cache_snapshot(run_dir),
+        "collaboration": collaboration_snapshot(run_dir),
+    }
+
+
+SAT_METRIC_FIELDS = (
+    "verifier_records",
+    "verifier_completed",
+    "verifier_failed",
+    "verifier_scored_records",
+    "verifier_with_diagnostics",
+    "steering_attempts",
+    "steering_shadow_evaluations",
+    "steering_apply_evaluations",
+    "steering_diagnostics",
+    "steering_applied",
+    "steering_not_delivered",
+    "global_evidence_reads",
+    "global_evidence_peer_reads",
+    "global_evidence_reader_candidate_count",
+    "shared_cache_records",
+    "shared_cache_candidate_writer_count",
+    "shared_cache_supersedes",
+    "shared_cache_with_evidence",
+    "collaboration_events",
+    "collaboration_certificates",
+    "collaboration_claims",
+    "collaboration_peer_audits",
+    "collaboration_evidence_reads",
+)
+
+
+def _mean_known(values: list[float]) -> float | None:
+    return sum(values) / len(values) if values else None
+
+
+def aggregate_sat_metrics(items: list[dict[str, Any]]) -> dict[str, Any]:
+    """Aggregate per-run SAT mechanism evidence for one cell or arm."""
+
+    if not items:
+        return {
+            "metrics": {field: 0 for field in SAT_METRIC_FIELDS},
+            "runs_with_sat": 0,
+            "collaboration_status": "absent",
+            "text_score_means": {},
+            "diagnostic_score_means": {},
+            "steering_actions": {},
+            "steering_observations": {},
+            "steering_diagnostic_actions": {},
+        }
+
+    metrics = {field: 0 for field in SAT_METRIC_FIELDS}
+    text_scores: dict[str, list[float]] = {}
+    diagnostic_scores: dict[str, list[float]] = {}
+    actions: dict[str, int] = {}
+    observations: dict[str, int] = {}
+    diagnostic_actions: dict[str, int] = {}
+    collaboration_status = "absent"
+    for item in items:
+        verifier = item.get("verifier") or {}
+        steering = item.get("steering") or {}
+        evidence = item.get("evidence") or {}
+        shared_cache = item.get("shared_cache") or {}
+        collaboration = item.get("collaboration") or {}
+        metrics["verifier_records"] += int(verifier.get("verifier_records") or 0)
+        metrics["verifier_completed"] += int(verifier.get("verifier_completed") or 0)
+        metrics["verifier_failed"] += int(verifier.get("verifier_failed") or 0)
+        metrics["verifier_scored_records"] += int(
+            verifier.get("verifier_scored_records") or 0
+        )
+        metrics["verifier_with_diagnostics"] += int(
+            verifier.get("verifier_with_diagnostics") or 0
+        )
+        metrics["steering_attempts"] += int(steering.get("steering_attempts") or 0)
+        metrics["steering_shadow_evaluations"] += int(
+            steering.get("steering_shadow_evaluations") or 0
+        )
+        metrics["steering_apply_evaluations"] += int(
+            steering.get("steering_apply_evaluations") or 0
+        )
+        metrics["steering_diagnostics"] += int(
+            steering.get("steering_diagnostics") or 0
+        )
+        metrics["steering_applied"] += int(steering.get("steering_applied") or 0)
+        metrics["steering_not_delivered"] += int(
+            steering.get("steering_not_delivered") or 0
+        )
+        metrics["global_evidence_reads"] += int(
+            evidence.get("global_evidence_reads") or 0
+        )
+        metrics["global_evidence_peer_reads"] += int(
+            evidence.get("global_evidence_peer_reads") or 0
+        )
+        metrics["global_evidence_reader_candidate_count"] += int(
+            evidence.get("global_evidence_reader_candidate_count") or 0
+        )
+        metrics["shared_cache_records"] += int(
+            shared_cache.get("shared_cache_records") or 0
+        )
+        metrics["shared_cache_candidate_writer_count"] += int(
+            shared_cache.get("shared_cache_candidate_writer_count") or 0
+        )
+        metrics["shared_cache_supersedes"] += int(
+            shared_cache.get("shared_cache_supersedes") or 0
+        )
+        metrics["shared_cache_with_evidence"] += int(
+            shared_cache.get("shared_cache_with_evidence") or 0
+        )
+        metrics["collaboration_events"] += int(
+            collaboration.get("events_total") or 0
+        )
+        metrics["collaboration_certificates"] += int(
+            collaboration.get("certificates_total") or 0
+        )
+        metrics["collaboration_claims"] += int(
+            collaboration.get("claims_total") or 0
+        )
+        metrics["collaboration_peer_audits"] += int(
+            collaboration.get("peer_audits_total") or 0
+        )
+        metrics["collaboration_evidence_reads"] += int(
+            collaboration.get("evidence_reads_total") or 0
+        )
+        if collaboration.get("status") == "present":
+            collaboration_status = "present"
+        for key, value in (verifier.get("verifier_text_score_means") or {}).items():
+            if isinstance(value, (int, float)):
+                text_scores.setdefault(str(key), []).append(float(value))
+        for key, value in (
+            verifier.get("verifier_diagnostic_score_means") or {}
+        ).items():
+            if isinstance(value, (int, float)):
+                diagnostic_scores.setdefault(str(key), []).append(float(value))
+        for key, value in (steering.get("steering_actions") or {}).items():
+            actions[str(key)] = actions.get(str(key), 0) + int(value)
+        for key, value in (steering.get("steering_observations") or {}).items():
+            observations[str(key)] = observations.get(str(key), 0) + int(value)
+        for key, value in (
+            steering.get("steering_diagnostic_actions") or {}
+        ).items():
+            diagnostic_actions[str(key)] = diagnostic_actions.get(str(key), 0) + int(value)
+    return {
+        "metrics": metrics,
+        "runs_with_sat": len(items),
+        "collaboration_status": collaboration_status,
+        "text_score_means": {
+            key: round(_mean_known(values) or 0.0, 6)
+            for key, values in sorted(text_scores.items())
+        },
+        "diagnostic_score_means": {
+            key: round(_mean_known(values) or 0.0, 6)
+            for key, values in sorted(diagnostic_scores.items())
+        },
+        "steering_actions": dict(sorted(actions.items())),
+        "steering_observations": dict(sorted(observations.items())),
+        "steering_diagnostic_actions": dict(sorted(diagnostic_actions.items())),
+    }
+
+
+def merge_sat_aggregates(items: list[dict[str, Any]]) -> dict[str, Any]:
+    """Merge already-aggregated SAT summaries for a condition or arm."""
+
+    known = [item for item in items if isinstance(item, dict) and "metrics" in item]
+    if not known:
+        return aggregate_sat_metrics([])
+    metrics = {field: 0 for field in SAT_METRIC_FIELDS}
+    text_scores: dict[str, list[float]] = {}
+    diagnostic_scores: dict[str, list[float]] = {}
+    actions: dict[str, int] = {}
+    observations: dict[str, int] = {}
+    diagnostic_actions: dict[str, int] = {}
+    collaboration_status = "absent"
+    for item in known:
+        for key, value in (item.get("metrics") or {}).items():
+            if key in metrics:
+                metrics[key] += int(value or 0)
+        if item.get("collaboration_status") == "present":
+            collaboration_status = "present"
+        for key, value in (item.get("text_score_means") or {}).items():
+            if isinstance(value, (int, float)):
+                text_scores.setdefault(str(key), []).append(float(value))
+        for key, value in (item.get("diagnostic_score_means") or {}).items():
+            if isinstance(value, (int, float)):
+                diagnostic_scores.setdefault(str(key), []).append(float(value))
+        for key, value in (item.get("steering_actions") or {}).items():
+            actions[str(key)] = actions.get(str(key), 0) + int(value)
+        for key, value in (item.get("steering_observations") or {}).items():
+            observations[str(key)] = observations.get(str(key), 0) + int(value)
+        for key, value in (item.get("steering_diagnostic_actions") or {}).items():
+            diagnostic_actions[str(key)] = diagnostic_actions.get(str(key), 0) + int(value)
+    return {
+        "metrics": metrics,
+        "runs_with_sat": sum(int(item.get("runs_with_sat") or 0) for item in known),
+        "collaboration_status": collaboration_status,
+        "text_score_means": {
+            key: round(_mean_known(values) or 0.0, 6)
+            for key, values in sorted(text_scores.items())
+        },
+        "diagnostic_score_means": {
+            key: round(_mean_known(values) or 0.0, 6)
+            for key, values in sorted(diagnostic_scores.items())
+        },
+        "steering_actions": dict(sorted(actions.items())),
+        "steering_observations": dict(sorted(observations.items())),
+        "steering_diagnostic_actions": dict(sorted(diagnostic_actions.items())),
+    }

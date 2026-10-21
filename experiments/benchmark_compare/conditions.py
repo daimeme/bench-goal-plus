@@ -6,7 +6,9 @@ from dataclasses import dataclass
 from typing import Literal
 
 
-ConditionId = Literal["B0", "B1", "B2", "B3", "B4"]
+ConditionId = Literal[
+    "B0", "B1", "B2", "B3", "B4", "A1", "A2", "A3", "A4", "A5"
+]
 CoordinationVariant = Literal["way0", "way1", "way2"]
 
 
@@ -24,6 +26,8 @@ class Condition:
     coordination_variant: CoordinationVariant | None
     implemented: bool = True
     limitation: str | None = None
+    sat_experiment_mode: str | None = None
+    sat_protocol: str | None = None
 
     def effective_concurrency(self, requested: int) -> int:
         if requested < 1:
@@ -44,6 +48,8 @@ class Condition:
             "search_space_mode": self.search_space_mode,
             "coordination_variant": self.coordination_variant,
             "limitation": self.limitation,
+            "sat_experiment_mode": self.sat_experiment_mode,
+            "sat_protocol": self.sat_protocol,
         }
 
 
@@ -76,6 +82,30 @@ CONDITIONS: dict[ConditionId, Condition] = {
     ),
     "B4": Condition(
         "B4", "goal-plus-codex", True, True, True, True, True, True, "enforce", "way1"
+    ),
+    # SAT-GP VLIW ablations. A1 is the Goal Plus baseline; each later arm
+    # adds one controller-frozen protocol layer while keeping the same task,
+    # T, K, and C. The runtime switch is the host-owned
+    # GOAL_PLUS_CONTROLLER_EXPERIMENT overlay, never agent prompt text.
+    "A1": Condition(
+        "A1", "goal-plus-pi", True, False, False, False, False, True,
+        None, None, True, None, "a1", None
+    ),
+    "A2": Condition(
+        "A2", "goal-plus-pi", True, True, False, False, True, True,
+        None, None, True, None, "a2", None
+    ),
+    "A3": Condition(
+        "A3", "goal-plus-pi", True, True, False, False, True, True,
+        None, None, True, None, "a3", None
+    ),
+    "A4": Condition(
+        "A4", "goal-plus-pi", True, True, False, False, True, True,
+        None, None, True, None, "a4", None
+    ),
+    "A5": Condition(
+        "A5", "goal-plus-pi", True, True, False, False, True, True,
+        None, None, True, None, "a5", "sat-gp/v2"
     ),
 }
 
@@ -119,7 +149,7 @@ def resolve_condition(
         )
     if condition.condition_id == "B0" and concurrency != 1:
         raise ValueError("B0 requires --concurrency 1")
-    if condition.condition_id in {"B1", "B3", "B4"} and concurrency < 2:
+    if condition.condition_id in {"B1", "B3", "B4", "A1", "A2", "A3", "A4", "A5"} and concurrency < 2:
         raise ValueError(f"{condition.condition_id} requires --concurrency >= 2")
     if coordination_variant is not None:
         if coordination_variant not in VARIANT_LIMITATIONS:

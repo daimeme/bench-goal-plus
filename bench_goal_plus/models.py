@@ -111,6 +111,7 @@ class PresetDefinition:
     profile: str | None
     campaign_id_template: str | None
     expected_profile: dict[str, Any]
+    conditions: tuple[str, ...] = ()
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -120,6 +121,7 @@ class PresetDefinition:
             "profile": self.profile,
             "campaign_id_template": self.campaign_id_template,
             "expected_profile": self.expected_profile,
+            "conditions": list(self.conditions),
         }
 
 

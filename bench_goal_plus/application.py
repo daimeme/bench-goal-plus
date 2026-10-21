@@ -176,7 +176,9 @@ class BenchmarkAgent:
                     loaded.configure_task(None)
         selected_methods = tuple(methods)
         selected_seeds = tuple(seeds) or (1,)
-        selected_conditions = tuple(conditions)
+        selected_conditions = tuple(conditions) or tuple(
+            getattr(preset, "conditions", ()) if preset else ()
+        )
         if shared_dir and (
             runner_definition.kind != "common-matrix"
             or not selected_methods
@@ -231,12 +233,20 @@ class BenchmarkAgent:
                     "expected": expected.get("methods"),
                     "requested": list(selected_methods),
                 }
+            if selected_conditions and list(selected_conditions) != list(
+                getattr(preset, "conditions", ())
+            ):
+                drift["conditions"] = {
+                    "expected": list(getattr(preset, "conditions", ())),
+                    "requested": list(selected_conditions),
+                }
             if drift:
                 raise ContractError(
                     f"preset {preset.preset_id} is frozen; use --benchmark for overrides:\n"
                     + json.dumps(drift, indent=2)
                 )
-            selected_methods = selected_methods or tuple(expected.get("methods") or ())
+            if not selected_methods and not selected_conditions:
+                selected_methods = tuple(expected.get("methods") or ())
             model = model if model is not None else expected.get("model")
             reasoning_effort = (
                 reasoning_effort
@@ -257,6 +267,16 @@ class BenchmarkAgent:
                 cell_concurrency
                 if cell_concurrency is not None
                 else expected.get("cell_concurrency")
+            )
+            worker_runtime_seconds = (
+                worker_runtime_seconds
+                if worker_runtime_seconds is not None
+                else expected.get("worker_runtime_seconds")
+            )
+            worker_min_runtime_seconds = (
+                worker_min_runtime_seconds
+                if worker_min_runtime_seconds is not None
+                else expected.get("worker_min_runtime_seconds")
             )
 
         if runner_definition.kind == "native-profile" and not selected_profile:
@@ -331,8 +351,20 @@ class BenchmarkAgent:
                 f"runner {runner_definition.runner_id} does not support method(s): "
                 f"{rejected}; supported: {supported}"
             )
+        pi_provider_methods = selected_methods
+        if (
+            not pi_provider_methods
+            and selected_conditions
+            and all(
+                condition in {"A1", "A2", "A3", "A4", "A5"}
+                for condition in selected_conditions
+            )
+        ):
+            # A1-A5 resolve to Goal Plus + Pi through resolve_condition; the
+            # condition axis, not --method, carries the harness identity.
+            pi_provider_methods = ("goal-plus-pi",)
         validate_pi_provider(
-            runner_kind=runner_definition.kind, methods=selected_methods, model=model,
+            runner_kind=runner_definition.kind, methods=pi_provider_methods, model=model,
             provider_id=pi_provider_id, api=pi_api,
             api_key_env=pi_api_key_env, api_base_env=pi_api_base_env,
         )
@@ -347,7 +379,7 @@ class BenchmarkAgent:
             non_goal_plus_conditions = [
                 condition
                 for condition in selected_conditions
-                if condition not in {"B3", "B4"}
+                if condition not in {"B3", "B4", "A1", "A2", "A3", "A4", "A5"}
             ]
             if (
                 unsupported_parallel_methods
@@ -973,9 +1005,12 @@ class BenchmarkAgent:
                 f"preset {preset.preset_id} cannot mix profile roots"
             )
         runner = self.catalog.runners[next(iter(runner_ids))]
-        profile = read_json(
-            runner.controller.parent / "profiles" / f"{preset.profile}.json"
-        )
+        profile_ref = Path(preset.profile)
+        if profile_ref.suffix or len(profile_ref.parts) > 1:
+            profile_path = profile_ref if profile_ref.is_absolute() else ROOT / profile_ref
+        else:
+            profile_path = runner.controller.parent / "profiles" / f"{preset.profile}.json"
+        profile = read_json(profile_path)
         observed = {
             "task_count": len(profile.get("task_ids", [])),
             "methods": profile.get("methods"),
@@ -985,6 +1020,16 @@ class BenchmarkAgent:
             "concurrency": profile.get("concurrency"),
             "cell_concurrency": profile.get("cell_concurrency"),
         }
+        if preset.conditions:
+            observed["conditions"] = profile.get("conditions")
+        if "worker_runtime_seconds" in preset.expected_profile:
+            observed["worker_runtime_seconds"] = profile.get(
+                "worker_runtime_seconds"
+            )
+        if "worker_min_runtime_seconds" in preset.expected_profile:
+            observed["worker_min_runtime_seconds"] = profile.get(
+                "worker_min_runtime_seconds"
+            )
         if "agent_provider" in preset.expected_profile:
             observed["agent_provider"] = profile.get("agent_provider")
         if "supplemental_evaluation_enabled" in preset.expected_profile:

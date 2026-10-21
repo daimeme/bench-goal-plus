@@ -32,7 +32,7 @@ def _external_source(name: str, required: tuple[str, ...]) -> dict[str, str] | N
     head = git("rev-parse", "HEAD")
     if head != git("rev-parse", "--verify", "--end-of-options", f"{expected}^{{commit}}"):
         raise ValueError(f"external {name} HEAD differs from expected ref")
-    if git("status", "--porcelain"):
+    if git("status", "--porcelain", "--untracked-files=no"):
         raise ValueError(f"external {name} checkout has local changes")
     if not all((path / item).exists() for item in required):
         raise ValueError(f"external {name} source is missing required assets")

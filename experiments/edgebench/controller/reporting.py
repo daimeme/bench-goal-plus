@@ -148,7 +148,7 @@ def comparison_record(
     completion_checks = completion.get("checks") or {}
     if cell.get("method") == "goal-plus-codex":
         worker_check = completion_checks.get("actual_worker_launches") or {}
-    elif cell.get("method") == "goal-plus-pi":
+    elif cell.get("method") in {"goal-plus-pi", "goal-plus-pi-provider"}:
         worker_check = completion_checks.get("agent_sessions") or {}
     else:
         worker_check = {}
@@ -207,6 +207,18 @@ def comparison_record(
         "Goal Plus verifier runs": (
             completion_checks.get("worker_verifier_runs") or {}
         ).get("actual"),
+        "SAT mode": cell.get("sat_experiment_mode"),
+        "SAT verifier records": (cell.get("sat") or {}).get("verifier_records"),
+        "SAT steering applied": (cell.get("sat") or {}).get("steering_applied"),
+        "SAT shared-cache records": (cell.get("sat") or {}).get(
+            "shared_cache_records"
+        ),
+        "SAT peer Evidence reads": (cell.get("sat") or {}).get(
+            "global_evidence_peer_reads"
+        ),
+        "SAT collaboration events": (cell.get("sat") or {}).get(
+            "collaboration_events"
+        ),
         "Incomplete reason": cell.get("incomplete_reason"),
         "Protocol classification": cell.get("protocol_classification"),
         "Official comparable": cell.get("official_edgebench_comparable", False),
@@ -529,6 +541,7 @@ def finalize_campaign(
         "wall_time_seconds": campaign.get("wall_time_seconds"),
         "live_search_concurrency": campaign.get("concurrency"),
         "cell_concurrency": campaign.get("cell_concurrency"),
+        "experiment_mode": campaign.get("experiment_mode"),
         "paper_reference": paper_reference,
         "cells": summaries,
         "completion_evidence_passed": all(

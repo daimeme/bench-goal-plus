@@ -332,6 +332,7 @@ class Catalog:
                     else None
                 ),
                 expected_profile=expected,
+                conditions=tuple(str(item) for item in (entry.get("conditions") or [])),
             )
 
     def runner_for(self, target: TargetDefinition) -> RunnerDefinition:

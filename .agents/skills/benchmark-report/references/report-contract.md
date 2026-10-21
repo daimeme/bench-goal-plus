@@ -14,7 +14,12 @@
 - execution: evaluator calls, iterations/rounds, actual runtime;
 - usage: input/cached/output tokens and coverage, cost coverage if available;
 - protocol: source revision, comparable classification, diff/known issue;
-- evidence: run/cell path and error/incomplete reason.
+- evidence: run/cell path and error/incomplete reason;
+- SAT-GP: arm mode, coverage, selection loss, verifier records,
+  steering attempts/applied/shadow, shared-cache records/writers, Global
+  Evidence reads, and collaboration events/certificates when the runtime ledger
+  exists. A missing collaboration ledger is reported as `absent`, never as zero
+  successful collaboration.
 
 Never replace a missing value with zero. JSON remains the machine source of truth; XLSX is a loss-minimized review view, not a new source of truth.
 

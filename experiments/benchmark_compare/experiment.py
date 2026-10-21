@@ -75,6 +75,14 @@ from experiments.benchmark_compare.conditions import (  # noqa: E402
     VARIANT_LIMITATIONS,
     resolve_condition,
 )
+from experiments.benchmark_compare.sat import (  # noqa: E402
+    SAT_CONTROLLER_EXPERIMENT_ENV,
+    SAT_EXPERIMENT_MODES,
+    SAT_GLOBAL_EVIDENCE_MODE_ENV,
+    require_sat_controller_experiment,
+    resolve_sat_experiment_mode,
+    sat_controller_environment,
+)
 from experiments.benchmark_compare.pi_worker_launcher import (  # noqa: E402
     LEGACY_GOAL_PLUS_WORKER_LAUNCHER_ENV,
     REAL_PI_BIN_ENV,
@@ -310,6 +318,7 @@ PI_MAIN_TOOL_SHIM = (
 class PrepareConfig:
     benchmark: str
     method: str
+    profile: str | None = None
     task_id: str | None = None
     shared_dir: bool = False
     shared_cache: bool = False
@@ -320,6 +329,7 @@ class PrepareConfig:
     pi_provider_id: str = PI_PROVIDER_ID
     pi_api: str = "openai-responses"
     pi_api_key_env: str = PI_API_KEY_ENV
+    api_base: str | None = None
     wall_time_seconds: int = DEFAULT_WALL_TIME_SECONDS
     concurrency: int = DEFAULT_CONCURRENCY
     soft_closeout_seconds: int = DEFAULT_SOFT_CLOSEOUT_SECONDS
@@ -363,6 +373,7 @@ def add_runtime_prepare_arguments(
     parser.add_argument("--pi-provider-id", default=PI_PROVIDER_ID)
     parser.add_argument("--pi-api", choices=PI_APIS, default="openai-responses")
     parser.add_argument("--pi-api-key-env", default=PI_API_KEY_ENV)
+    parser.add_argument("--api-base")
     parser.add_argument("--shared-dir", action="store_true")
     parser.add_argument("--shared-cache", action="store_true")
     parser.add_argument(
@@ -689,7 +700,98 @@ def checkout_dirty(path: Path) -> bool:
     return bool(completed.stdout.strip())
 
 
+def load_experiment_profile(profile: str | None) -> dict[str, Any] | None:
+    """Load a registry profile used to freeze a common-matrix experiment.
+
+    The common runner passes the profile through to this controller. Keeping
+    the profile contract in the run manifest prevents an A1-A5 cell from
+    silently falling back to the generic B-condition defaults.
+    """
+    if not profile:
+        return None
+    path = Path(profile).expanduser()
+    if not path.is_absolute():
+        path = ROOT / path
+    if not path.is_file():
+        raise ValueError(f"experiment profile does not exist: {profile}")
+    payload = load_json(path)
+    if not isinstance(payload, dict):
+        raise ValueError(f"experiment profile must be a JSON object: {profile}")
+    payload = dict(payload)
+    payload["path"] = str(path)
+    return payload
+
+
+def validate_experiment_profile(
+    profile: Mapping[str, Any],
+    *,
+    benchmark: str,
+    method: str,
+    condition: str | None,
+    model: str,
+    reasoning_effort: str,
+    wall_time_seconds: int,
+    concurrency: int,
+    worker_runtime_seconds: int | None = None,
+) -> None:
+    expected_benchmark = profile.get("benchmark")
+    if expected_benchmark and expected_benchmark != benchmark:
+        raise ValueError(
+            f"profile benchmark {expected_benchmark!r} does not match {benchmark!r}"
+        )
+    methods = profile.get("methods") or []
+    if methods and method not in methods:
+        raise ValueError(f"profile does not support method {method!r}")
+    conditions = profile.get("conditions") or []
+    if conditions and condition not in conditions:
+        raise ValueError(
+            f"profile condition {conditions!r} does not match {condition!r}"
+        )
+    expected = {
+        "model": model,
+        "reasoning_effort": reasoning_effort,
+        "wall_time_seconds": wall_time_seconds,
+        "concurrency": concurrency,
+    }
+    if worker_runtime_seconds is not None:
+        expected["worker_runtime_seconds"] = worker_runtime_seconds
+    for key, actual in expected.items():
+        frozen = profile.get(key)
+        if frozen is not None and frozen != actual:
+            raise ValueError(
+                f"profile freezes {key}={frozen!r}, received {actual!r}"
+            )
+    profile_mode = profile.get("experiment_mode")
+    if profile_mode is not None:
+        if profile_mode not in SAT_EXPERIMENT_MODES:
+            raise ValueError(
+                f"profile experiment_mode must be one of "
+                f"{', '.join(SAT_EXPERIMENT_MODES)}; got {profile_mode!r}"
+            )
+        expected_condition = f"A{profile_mode[1:]}"
+        if condition != expected_condition:
+            raise ValueError(
+                f"profile experiment_mode {profile_mode!r} belongs to "
+                f"{expected_condition}, not {condition!r}"
+            )
+
+
 def prepare(args: argparse.Namespace) -> int:
+    if not hasattr(args, "api_base"):
+        args.api_base = None
+    if args.api_base is None:
+        args.api_base = os.environ.get("OPENAI_BASE_URL")
+    if (
+        args.method in {"plain-pi", "goal-plus-pi"}
+        and not args.api_base
+        and getattr(args, "pi_api_base_env", None)
+    ):
+        args.api_base = os.environ.get(args.pi_api_base_env)
+    if args.method in {"plain-pi", "goal-plus-pi"} and not args.api_base:
+        raise ValueError(
+            "--api-base, OPENAI_BASE_URL, or the selected Pi base-url env "
+            "is required for a Pi provider"
+        )
     configure_adapter(
         args.benchmark,
         task_id=getattr(args, "task_id", None),
@@ -703,6 +805,30 @@ def prepare(args: argparse.Namespace) -> int:
         condition_id=args.condition,
         coordination_variant=args.coordination_variant,
     )
+    profile_contract = load_experiment_profile(getattr(args, "profile", None))
+    sat_mode = resolve_sat_experiment_mode(condition, profile_contract)
+    if profile_contract is not None:
+        validate_experiment_profile(
+            profile_contract,
+            benchmark=args.benchmark,
+            method=args.method,
+            condition=args.condition,
+            model=args.model,
+            reasoning_effort=args.reasoning_effort,
+            wall_time_seconds=args.wall_time_seconds,
+            concurrency=args.concurrency,
+            worker_runtime_seconds=args.worker_runtime_seconds,
+        )
+        if sat_mode is None:
+            # Legacy shared-cache runs keep the profile switch. SAT arms are
+            # controller-owned and must not render an agent-supplied cache
+            # template into the Goal prompt.
+            args.shared_cache = bool(
+                getattr(args, "shared_cache", False)
+                or profile_contract.get("shared_cache", False)
+            )
+    if sat_mode is not None:
+        args.shared_cache = False
     if args.wall_time_seconds <= args.soft_closeout_seconds:
         raise ValueError("wall time must exceed the closeout reserve")
     if args.concurrency < 1:
@@ -754,6 +880,8 @@ def prepare(args: argparse.Namespace) -> int:
         goal_plus_entry,
         upstream_key="goal_plus",
     )
+    if sat_mode is not None:
+        require_sat_controller_experiment(goal_plus_root, sat_mode)
     managed_checkouts = [("goal_plus", goal_plus_checkout)]
     skydiscover_root = None
     if is_sky:
@@ -902,6 +1030,7 @@ def prepare(args: argparse.Namespace) -> int:
             evaluation_mode=EVALUATION_MODE,
             early_stop_contract=GOAL_PLUS_EARLY_STOP_CONTRACT,
             candidate_judge_mode=candidate_judge["mode"],
+            sat_experiment_mode=sat_mode,
         )
         (workspace / "GOAL.md").write_text(goal_prompt)
         workspaces.append(workspace)
@@ -934,7 +1063,9 @@ def prepare(args: argparse.Namespace) -> int:
                 strategy="agent_guided",
                 worker_model=worker_model,
                 annotator_model=(
-                    None if candidate_judge["mode"] != MODE_OFF else worker_model
+                    None
+                    if candidate_judge["mode"] != MODE_OFF or sat_mode is not None
+                    else worker_model
                 ),
                 workspace_provider="git_worktree",
                 promotion_mode=(
@@ -957,7 +1088,21 @@ def prepare(args: argparse.Namespace) -> int:
             "artifact_name": ARTIFACT_NAME,
             "artifact_is_directory": (workspace / ARTIFACT_NAME).is_dir(),
             "shared_dir_enabled": getattr(args, "shared_dir", False),
-            "shared_cache_enabled": getattr(args, "shared_cache", False),
+            "shared_cache_enabled": bool(getattr(args, "shared_cache", False)),
+            "sat_experiment": (
+                {
+                    "mode": sat_mode,
+                    "protocol": (
+                        condition.sat_protocol if condition is not None else None
+                    ),
+                    "controller_env": SAT_CONTROLLER_EXPERIMENT_ENV,
+                    "global_evidence_mode": sat_controller_environment(sat_mode)[
+                        GOAL_PLUS_GLOBAL_EVIDENCE_MODE_ENV
+                    ],
+                }
+                if sat_mode is not None
+                else None
+            ),
             "worker_sandbox": (
                 _pi_worker_sandbox_policy(args.pi_api_key_env)
                 if agent_harness == "pi"
@@ -1037,6 +1182,8 @@ def prepare(args: argparse.Namespace) -> int:
         "method": args.method,
         "condition": condition.as_manifest() if condition else None,
         "benchmark_adapter": args.benchmark,
+        "profile": getattr(args, "profile", None),
+        "profile_contract": profile_contract,
         "benchmark_adapter_module": getattr(args, "adapter_module", None),
         "benchmark_task_selector": getattr(args, "task_id", None),
         "benchmark_adapter_contract": ADAPTER_CONTRACT,
@@ -2429,6 +2576,38 @@ def execute_goal_plus(
         environment[GOAL_PLUS_GLOBAL_EVIDENCE_MODE_ENV] = "manual"
         environment[GOAL_PLUS_SUPPLEMENTAL_EVALUATION_ENABLED_ENV] = "0"
         environment[GOAL_PLUS_SUPPLEMENTAL_EVALUATION_REQUIRED_ENV] = "0"
+    sat_experiment = prepared_goal_config.get("sat_experiment") or {}
+    if sat_experiment:
+        sat_mode = sat_experiment.get("mode")
+        if sat_mode not in SAT_EXPERIMENT_MODES:
+            raise RuntimeError(
+                f"prepared SAT experiment has an invalid mode: {sat_mode!r}"
+            )
+        condition_mode = (manifest.get("condition") or {}).get(
+            "sat_experiment_mode"
+        )
+        if condition_mode is not None and condition_mode != sat_mode:
+            raise RuntimeError(
+                "prepared SAT experiment mode does not match the frozen condition"
+            )
+        environment[SAT_CONTROLLER_EXPERIMENT_ENV] = json.dumps(
+            {"mode": sat_mode}
+        )
+        environment[GOAL_PLUS_GLOBAL_EVIDENCE_MODE_ENV] = (
+            sat_experiment.get("global_evidence_mode")
+            or sat_controller_environment(sat_mode)[
+                GOAL_PLUS_GLOBAL_EVIDENCE_MODE_ENV
+            ]
+        )
+        # The native evidence annotator is an unlisted LLM reviewer outside
+        # the A1-A5 matrix. Disable it so A1 has no LLM claim analysis and the
+        # controller-frozen verifier is the only recognition variable.
+        environment[ANNOTATOR_DISABLED_ENV] = "1"
+        # The experiment overlay owns shared_cache for SAT.  A stale template
+        # from a parent shell must not shadow the controller-owned arm.
+        environment.pop("GOAL_PLUS_CONTROLLER_SHARED_CACHE", None)
+    else:
+        environment.pop(SAT_CONTROLLER_EXPERIMENT_ENV, None)
     pi_provider_id, pi_api, pi_api_key_env = pi_provider_config(args)
     if (workspace / ".gp").exists():
         raise RuntimeError("standard Goal Plus run must start without .gp")
@@ -2518,6 +2697,7 @@ def execute_goal_plus(
         early_stop_contract=early_stop,
         outer_deadline_at=deadline.isoformat(),
         candidate_judge_mode=judge_mode,
+        sat_experiment_mode=(sat_experiment or {}).get("mode"),
     )
     (run_dir / "prompt.md").write_text(prompt)
     reasoning_effort = manifest.get("reasoning_effort", DEFAULT_REASONING_EFFORT)
@@ -2534,8 +2714,13 @@ def execute_goal_plus(
             api_key_env=pi_api_key_env,
         )
         environment["PI_CODING_AGENT_DIR"] = str(pi_home)
-        if bool(
-            (manifest.get("goal_plus_config") or {}).get("shared_cache_enabled")
+        if (
+            bool(
+                (manifest.get("goal_plus_config") or {}).get(
+                    "shared_cache_enabled"
+                )
+            )
+            and not sat_experiment
         ):
             environment["GOAL_PLUS_CONTROLLER_SHARED_CACHE"] = json.dumps(
                 SHARED_CACHE_SPEC_TEMPLATE
@@ -3293,6 +3478,10 @@ def build_parser() -> argparse.ArgumentParser:
     prepare_parser = subparsers.add_parser("prepare")
     prepare_parser.add_argument(
         "--benchmark", choices=tuple(BENCHMARK_ADAPTERS), default="heurigym"
+    )
+    prepare_parser.add_argument(
+        "--profile",
+        help="registry experiment profile whose contract is frozen into the manifest",
     )
     prepare_parser.add_argument(
         "--task-id",

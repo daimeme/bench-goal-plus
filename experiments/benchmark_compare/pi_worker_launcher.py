@@ -1127,8 +1127,22 @@ def _blind_tool_response(
     return _INVALID_BLIND_RESPONSE
 
 
-class _ThreadingUnixServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
-    daemon_threads = True
+if hasattr(socketserver, "UnixStreamServer"):
+    class _ThreadingUnixServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
+        daemon_threads = True
+else:
+    class _ThreadingUnixServer:
+        """Import-safe placeholder on hosts without Unix-domain sockets.
+
+        The Pi worker relay is only usable with Unix sockets.  Keep the module
+        importable so Codex/common-matrix paths can run on Windows, then fail
+        explicitly if a Pi relay is actually requested.
+        """
+
+        def __init__(self, *_args: Any, **_kwargs: Any) -> None:
+            raise RuntimeError(
+                "Pi worker relay requires socketserver.UnixStreamServer on this host"
+            )
 
 
 def _run_host_tool(

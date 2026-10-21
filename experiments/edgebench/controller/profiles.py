@@ -11,6 +11,10 @@ import yaml
 from . import io
 from .asset_issues import excluded_task_issues
 from .context import current_paths
+from bench_goal_plus.sat_contract import (
+    SAT_EXPERIMENT_MODES,
+    expected_global_evidence_mode,
+)
 
 
 METHODS = {
@@ -241,7 +245,44 @@ def load_profile(value: str | Path) -> tuple[Path, dict[str, Any]]:
         profile["task_assets_dir"] = str((paths.root / assets).resolve())
     goal_plus_methods = set(profile["methods"]) & GOAL_PLUS_METHODS
     if goal_plus_methods:
-        global_evidence_mode = profile.get("global_evidence_mode", "manual")
+        experiment_mode = profile.get("experiment_mode")
+        if experiment_mode is not None:
+            if experiment_mode not in SAT_EXPERIMENT_MODES:
+                raise ValueError(
+                    "experiment_mode must be one of "
+                    + ", ".join(SAT_EXPERIMENT_MODES)
+                )
+            if len(profile["methods"]) != 1:
+                raise ValueError(
+                    "a SAT EdgeBench profile must contain exactly one method"
+                )
+            if profile["task_ids"] != ["vliw_kernel_optimization"]:
+                raise ValueError(
+                    "SAT EdgeBench profiles run exactly the VLIW task"
+                )
+            if profile.get("supplemental_evaluation_enabled", False):
+                raise ValueError(
+                    "SAT EdgeBench profiles must disable supplemental evaluation"
+                )
+            expected_evidence = expected_global_evidence_mode(experiment_mode)
+            configured_evidence = profile.get("global_evidence_mode")
+            if (
+                configured_evidence is not None
+                and configured_evidence != expected_evidence
+            ):
+                raise ValueError(
+                    f"SAT mode {experiment_mode} requires "
+                    f"global_evidence_mode={expected_evidence!r}"
+                )
+            profile["global_evidence_mode"] = expected_evidence
+        global_evidence_mode = profile.get(
+            "global_evidence_mode",
+            (
+                expected_global_evidence_mode(experiment_mode)
+                if experiment_mode is not None
+                else "manual"
+            ),
+        )
         if global_evidence_mode not in GLOBAL_EVIDENCE_MODES:
             allowed = ", ".join(sorted(GLOBAL_EVIDENCE_MODES))
             raise ValueError(f"global_evidence_mode must be one of {allowed}")
@@ -253,6 +294,7 @@ def load_profile(value: str | Path) -> tuple[Path, dict[str, Any]]:
             profile[field] = value
     else:
         goal_plus_fields = {
+            "experiment_mode",
             "global_evidence_mode",
             *GOAL_PLUS_FEATURE_FLAGS,
         }

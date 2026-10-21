@@ -29,6 +29,11 @@ from bench_artifacts import (  # noqa: E402
     write_json_atomic as write_json,
 )
 from bench_runtime_paths import configure_temp_environment  # noqa: E402
+from bench_goal_plus.goal_plus_evidence import (  # noqa: E402
+    aggregate_sat_metrics,
+    merge_sat_aggregates,
+)
+from bench_goal_plus.sat_analysis import selection_metrics  # noqa: E402
 from experiments.benchmark_compare.conditions import CONDITIONS  # noqa: E402
 from experiments.benchmark_compare import experiment as standalone  # noqa: E402
 from experiments.openevolve_compare.reporting import collect_run, numeric  # noqa: E402
@@ -95,9 +100,16 @@ def prepare_cell_config(
     return standalone.PrepareConfig(
         benchmark=benchmark_id,
         method=method,
+        profile=getattr(args, "profile", None),
         task_id=args.task_id,
         shared_dir=args.shared_dir,
-        shared_cache=getattr(args, "shared_cache", False),
+        shared_cache=bool(
+            getattr(args, "shared_cache", False)
+            or (
+                standalone.load_experiment_profile(getattr(args, "profile", None))
+                or {}
+            ).get("shared_cache", False)
+        ),
         condition=condition_id,
         coordination_variant=(
             condition.coordination_variant if condition is not None else None
@@ -106,6 +118,11 @@ def prepare_cell_config(
         pi_provider_id=args.pi_provider_id,
         pi_api=args.pi_api,
         pi_api_key_env=args.pi_api_key_env,
+        api_base=(
+            getattr(args, "api_base", None)
+            or os.environ.get(getattr(args, "pi_api_base_env", "") or "")
+            or os.environ.get("OPENAI_BASE_URL")
+        ),
         wall_time_seconds=args.wall_time_seconds,
         concurrency=concurrency,
         soft_closeout_seconds=args.soft_closeout_seconds,
@@ -140,6 +157,9 @@ def prepare_campaign(args: argparse.Namespace) -> int:
     selected_conditions = tuple(
         args.conditions or (() if args.methods else DEFAULT_CONDITIONS)
     )
+    profile_contract = standalone.load_experiment_profile(
+        getattr(args, "profile", None)
+    )
     for condition_id in selected_conditions:
         condition = CONDITIONS[condition_id]
         if not condition.implemented:
@@ -166,8 +186,13 @@ def prepare_campaign(args: argparse.Namespace) -> int:
         "prepared_at": utc_now(),
         "benchmarks": args.benchmarks,
         "task_id": args.task_id,
+        "profile": getattr(args, "profile", None),
+        "profile_contract": profile_contract,
         "shared_dir": args.shared_dir,
-        "shared_cache": getattr(args, "shared_cache", False),
+        "shared_cache": bool(
+            getattr(args, "shared_cache", False)
+            or (profile_contract or {}).get("shared_cache", False)
+        ),
         "conditions": list(selected_conditions),
         "methods": args.methods,
         "seeds": args.seeds,
@@ -708,6 +733,7 @@ def collect_cell(campaign: dict[str, Any], cell: dict[str, Any]) -> dict[str, An
     seed_score = numeric((record.get("score") or {}).get("seed_best"))
     direction = (record.get("protocol") or {}).get("direction")
     threshold = (campaign.get("thresholds") or {}).get(cell["benchmark_id"])
+    sat = aggregate_sat_metrics(_sat_run_summaries(manifest))
     record.update(
         {
             "benchmark_id": cell["benchmark_id"],
@@ -722,13 +748,136 @@ def collect_cell(campaign: dict[str, Any], cell: dict[str, Any]) -> dict[str, An
                 threshold=threshold,
             ),
             "coordination": coordination_metrics(manifest),
+            "sat": sat,
+            "sat_collaboration_status": sat.get("collaboration_status"),
+            "sat_k": _sat_k_contract(manifest),
         }
     )
+    record["sat_k_expected"] = record["sat_k"]["expected"]
+    record["sat_k_initial_worker_peak"] = record["sat_k"]["initial_worker_peak"]
+    record["sat_k_consistent"] = record["sat_k"]["consistent"]
+    for key, value in (sat.get("metrics") or {}).items():
+        record[f"sat_{key}"] = value
+    selection = _selection_summary(manifest, record)
+    record["selection"] = selection
+    for key, value in selection.items():
+        record[f"selection_{key}"] = value
     return record
 
 
+def _sat_run_summaries(manifest: dict[str, Any]) -> list[dict[str, Any]]:
+    runs = ((manifest.get("execution") or {}).get("goal_plus") or {}).get(
+        "runs"
+    ) or []
+    return [
+        run["sat"]
+        for run in runs
+        if isinstance(run, dict) and isinstance(run.get("sat"), dict)
+    ]
+
+
+def _selection_summary(
+    manifest: dict[str, Any], record: dict[str, Any]
+) -> dict[str, Any]:
+    runs = ((manifest.get("execution") or {}).get("goal_plus") or {}).get(
+        "runs"
+    ) or []
+    score = record.get("score") or {}
+    protocol = record.get("protocol") or {}
+    return selection_metrics(
+        [run for run in runs if isinstance(run, dict)],
+        seed_score=numeric(score.get("seed_best")),
+        final_score=numeric(score.get("final")),
+        direction=protocol.get("direction"),
+    )
+
+
+def _aggregate_selection(records: list[dict[str, Any]]) -> dict[str, Any]:
+    selections = [
+        record.get("selection")
+        for record in records
+        if isinstance(record.get("selection"), dict)
+    ]
+    coverage = [
+        value
+        for selection in selections
+        for value in [selection.get("coverage_achieved")]
+        if isinstance(value, bool)
+    ]
+    losses = [
+        value
+        for selection in selections
+        for value in [selection.get("selection_loss")]
+        if isinstance(value, (int, float)) and not isinstance(value, bool)
+    ]
+    spreads = [
+        value
+        for selection in selections
+        for value in [selection.get("candidate_score_spread")]
+        if isinstance(value, (int, float)) and not isinstance(value, bool)
+    ]
+    final_gaps = [
+        value
+        for selection in selections
+        for value in [selection.get("final_gap_to_best")]
+        if isinstance(value, (int, float)) and not isinstance(value, bool)
+    ]
+    return {
+        "cell_count": len(selections),
+        "coverage_count": sum(1 for value in coverage if value),
+        "coverage_rate": (
+            sum(1 for value in coverage if value) / len(coverage)
+            if coverage
+            else None
+        ),
+        "mean_selection_loss": (
+            sum(losses) / len(losses) if losses else None
+        ),
+        "mean_candidate_score_spread": (
+            sum(spreads) / len(spreads) if spreads else None
+        ),
+        "mean_final_gap_to_best": (
+            sum(final_gaps) / len(final_gaps) if final_gaps else None
+        ),
+        "selected_best_match_rate": (
+            sum(
+                1
+                for selection in selections
+                if selection.get("selected_best_match") is True
+            )
+            / len(selections)
+            if selections
+            else None
+        ),
+    }
+
+
+def _sat_k_contract(manifest: dict[str, Any]) -> dict[str, Any]:
+    expected = (manifest.get("budget") or {}).get("concurrency")
+    runs = ((manifest.get("execution") or {}).get("goal_plus") or {}).get(
+        "runs"
+    ) or []
+    peaks = [
+        (run.get("initial_worker_concurrency") or {}).get("max_live_workers")
+        for run in runs
+        if isinstance(run, dict)
+        and isinstance(run.get("initial_worker_concurrency"), dict)
+    ]
+    peaks = [int(value) for value in peaks if isinstance(value, (int, float))]
+    observed = max(peaks) if peaks else None
+    return {
+        "expected": expected,
+        "initial_worker_peak": observed,
+        "consistent": (
+            observed == expected
+            if observed is not None and isinstance(expected, int)
+            else None
+        ),
+    }
+
+
 def condition_summaries(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    summaries = []
+    summaries: list[dict[str, Any]] = []
     condition_ids = {
         record.get("condition") or record.get("method")
         for record in records
@@ -799,6 +948,14 @@ def condition_summaries(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "total_output_tokens": int(sum(known_output)) if known_output else None,
                 "output_token_coverage": f"{len(known_output)}/{len(selected)} cells",
                 "token_coverage_notes": token_coverage,
+                "sat": merge_sat_aggregates(
+                    [
+                        record["sat"]
+                        for record in selected
+                        if isinstance(record.get("sat"), dict)
+                    ]
+                ),
+                "selection": _aggregate_selection(selected),
             }
         )
     return summaries
@@ -849,6 +1006,101 @@ def paired_b1_b4(records: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _paired_condition_effect(
+    records: list[dict[str, Any]],
+    *,
+    baseline: str,
+    condition: str,
+) -> dict[str, Any]:
+    indexed = {
+        (
+            record.get("benchmark_id"),
+            record.get("task_id"),
+            record.get("seed"),
+            record.get("condition"),
+        ): record
+        for record in records
+    }
+    bases = {key[:3] for key in indexed if key[3] == baseline}
+    pairs = []
+    for base in sorted(bases, key=str):
+        base_record = indexed.get((*base, baseline))
+        arm_record = indexed.get((*base, condition))
+        if base_record is None or arm_record is None:
+            continue
+        base_gain = numeric((base_record.get("score") or {}).get("directional_gain"))
+        arm_gain = numeric((arm_record.get("score") or {}).get("directional_gain"))
+        if base_gain is None or arm_gain is None:
+            continue
+        pairs.append(
+            {
+                "benchmark_id": base[0],
+                "task_id": base[1],
+                "seed": base[2],
+                "baseline_directional_gain": base_gain,
+                "arm_directional_gain": arm_gain,
+                "arm_minus_baseline_directional_gain": arm_gain - base_gain,
+            }
+        )
+    effects = [item["arm_minus_baseline_directional_gain"] for item in pairs]
+    baseline_sat_items = [
+        indexed[(*base, baseline)]["sat"]
+        for base in sorted(bases, key=str)
+        if (base_record := indexed.get((*base, baseline))) is not None
+        and isinstance(base_record.get("sat"), dict)
+    ]
+    arm_sat_items = [
+        indexed[(*base, condition)]["sat"]
+        for base in sorted(bases, key=str)
+        if (arm_record := indexed.get((*base, condition))) is not None
+        and isinstance(arm_record.get("sat"), dict)
+    ]
+    return {
+        "baseline": baseline,
+        "arm": condition,
+        "paired_count": len(pairs),
+        "mean_minus_baseline_directional_gain": (
+            sum(effects) / len(effects) if effects else None
+        ),
+        "baseline_sat": merge_sat_aggregates(baseline_sat_items),
+        "arm_sat": merge_sat_aggregates(arm_sat_items),
+        "pairs": pairs,
+    }
+
+
+def paired_condition_effects(
+    records: list[dict[str, Any]],
+    *,
+    baseline: str,
+    conditions: tuple[str, ...],
+) -> dict[str, Any]:
+    """Pair ablation arms by benchmark/task/seed against one baseline."""
+    return {
+        "baseline": baseline,
+        "arms": {
+            condition: _paired_condition_effect(
+                records, baseline=baseline, condition=condition
+            )
+            for condition in conditions
+        },
+    }
+
+
+def paired_sat_ablation(records: list[dict[str, Any]]) -> dict[str, Any]:
+    """Pair the SAT ladder incrementally: A2-A1, A3-A2, A4-A3, A5-A4."""
+
+    chain = (("A1", "A2"), ("A2", "A3"), ("A3", "A4"), ("A4", "A5"))
+    return {
+        "baseline": "A1",
+        "arms": {
+            f"{arm} - {baseline}": _paired_condition_effect(
+                records, baseline=baseline, condition=arm
+            )
+            for baseline, arm in chain
+        },
+    }
+
+
 def render_markdown(summary: dict[str, Any]) -> str:
     lines = [
         f"# Benchmark campaign {summary['campaign_id']}",
@@ -872,6 +1124,28 @@ def render_markdown(summary: dict[str, Any]) -> str:
             f"{calls if calls is not None else 'n/a'} | "
             f"{input_tokens if input_tokens is not None else 'n/a'} / "
             f"{output_tokens if output_tokens is not None else 'n/a'} |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Coverage and selection",
+            "",
+            "| Condition | Coverage rate | Mean selection loss | Mean score spread | "
+            "Mean final gap | Selected = best |",
+            "|---|---:|---:|---:|---:|---:|",
+        ]
+    )
+    for item in summary["condition_summaries"]:
+        selection = item.get("selection") or {}
+        def fmt(value: Any) -> str:
+            return f"{value:.6g}" if isinstance(value, (int, float)) else "n/a"
+
+        lines.append(
+            f"| {item['condition']} | {fmt(selection.get('coverage_rate'))} | "
+            f"{fmt(selection.get('mean_selection_loss'))} | "
+            f"{fmt(selection.get('mean_candidate_score_spread'))} | "
+            f"{fmt(selection.get('mean_final_gap_to_best'))} | "
+            f"{fmt(selection.get('selected_best_match_rate'))} |"
         )
     incomplete = [
         record for record in summary["records"] if record.get("status") != "finished"
@@ -912,6 +1186,46 @@ def render_markdown(summary: dict[str, Any]) -> str:
             "wall time and effective concurrency are the wall-clock view.",
         ]
     )
+    sat = summary.get("sat_ablation") or {}
+    if sat.get("arms"):
+        lines.extend(["", "## SAT-GP A1 ablation", ""])
+        lines.append(
+            "| Arm | Paired cells | Mean directional gain | Verifier records | "
+            "Cache records | Steering applied | Peer Evidence reads | Collaboration events |"
+        )
+        lines.append("|---|---:|---:|---:|---:|---:|---:|---:|")
+        for item in sat["arms"].values():
+            effect = item.get("mean_minus_baseline_directional_gain")
+            metrics = (item.get("arm_sat") or {}).get("metrics") or {}
+            label = f"{item.get('arm')} - {item.get('baseline')}"
+            lines.append(
+                f"| {label} | {item.get('paired_count', 0)} | "
+                f"{effect if effect is not None else 'n/a'} | "
+                f"{metrics.get('verifier_records', 0)} | "
+                f"{metrics.get('shared_cache_records', 0)} | "
+                f"{metrics.get('steering_applied', 0)} | "
+                f"{metrics.get('global_evidence_peer_reads', 0)} | "
+                f"{metrics.get('collaboration_events', 0)} |"
+            )
+        lines.append(
+            "A1 is the Goal Plus search baseline; the ladder is paired incrementally "
+            "(A2-A1, A3-A2, A4-A3, A5-A4). Mechanism counts come from persisted "
+            "Goal Plus verifier, steering, Evidence-read, and collaboration artifacts. "
+            "A missing collaboration ledger is reported as absent, never as "
+            "zero-success."
+        )
+        k_mismatch = [
+            record
+            for record in summary.get("records") or []
+            if record.get("condition") in {"A1", "A2", "A3", "A4", "A5"}
+            and record.get("sat_k_consistent") is False
+        ]
+        if k_mismatch:
+            lines.append(
+                "- **Partial:** actual initial worker peak does not match K for "
+                + ", ".join(str(record.get("cell_id")) for record in k_mismatch)
+                + "; do not use these cells in a matched comparison."
+            )
     return "\n".join(lines) + "\n"
 
 
@@ -936,6 +1250,7 @@ def summarize_campaign(campaign_dir: Path) -> dict[str, Any]:
         ),
         "condition_summaries": condition_summaries(records),
         "b1_vs_b4": paired_b1_b4(records),
+        "sat_ablation": paired_sat_ablation(records),
         "records": records,
         "coverage": {
             "final_score": "controller-owned final evaluator",
@@ -1011,6 +1326,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--task-id",
         help="adapter-specific task selector; requires exactly one benchmark",
     )
+    prepare_parser.add_argument("--profile")
     prepare_parser.add_argument(
         "--conditions", nargs="+", choices=tuple(CONDITIONS), default=[]
     )

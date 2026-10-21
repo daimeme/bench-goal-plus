@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "id": "vliw-sat-matrix-2h-deepseek-v4-flash-medium",
+  "benchmark": "local-vliw",
+  "task_ids": ["vliw_kernel_optimization"],
+  "methods": ["goal-plus-pi"],
+  "conditions": ["A1", "A2", "A3", "A4", "A5"],
+  "model": "deepseek-v4-flash",
+  "reasoning_effort": "medium",
+  "wall_time_seconds": 7200,
+  "concurrency": 4,
+  "cell_concurrency": 1,
+  "worker_runtime_seconds": 6600
+}

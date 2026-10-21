@@ -57,6 +57,8 @@ class CommonMatrixRunner(BenchmarkRunner):
             "--benchmarks",
             *spec.target_ids,
         ]
+        if spec.profile:
+            command.extend(["--profile", spec.profile])
         if spec.task_id is not None:
             command.extend(["--task-id", spec.task_id])
         if spec.shared_dir:

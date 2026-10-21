@@ -11,6 +11,10 @@ from bench_goal_plus.goal_plus_command import (
     goal_plus_command_config,
     goal_plus_entrypoint,
 )
+from bench_goal_plus.sat_contract import (
+    require_sat_controller_experiment,
+    sat_controller_environment,
+)
 
 from . import io
 from .context import current_paths
@@ -55,6 +59,9 @@ def _goal_plus_command_config(
         and profile.get("evidence_annotator_model") is None
     ):
         annotator_model = str(model).partition("/")[2]
+    if profile.get("experiment_mode"):
+        # SAT arms must not spend a model call on evidence annotation.
+        annotator_model = None
     return goal_plus_command_config(
         max_parallel=concurrency,
         strategy="agent_guided",
@@ -125,6 +132,7 @@ def prepare(args: argparse.Namespace, profile: dict[str, Any]) -> Path:
     model = args.model or profile["model"]
     if api_protocol == "pi-provider":
         validate_pi_provider_model(model)
+    experiment_mode = profile.get("experiment_mode")
     requested_reasoning = getattr(args, "reasoning_effort", None)
     if requested_reasoning is not None:
         reasoning = requested_reasoning
@@ -231,6 +239,10 @@ def prepare(args: argparse.Namespace, profile: dict[str, Any]) -> Path:
         if not goal_plus_source["valid"]:
             raise ValueError(
                 f"Goal Plus source validation failed: {goal_plus_source['error']}"
+            )
+        if experiment_mode:
+            require_sat_controller_experiment(
+                Path(str(goal_plus_source["source_dir"])), experiment_mode
             )
     profile_protocol_overrides = dict(profile.get("protocol_overrides") or {})
     allowed_protocol_override_fields = ALLOWED_PROTOCOL_OVERRIDE_FIELDS | set(
@@ -353,6 +365,11 @@ def prepare(args: argparse.Namespace, profile: dict[str, Any]) -> Path:
                 "model": model,
                 "reasoning_effort": reasoning,
                 **role_config,
+                **(
+                    {"experiment_mode": experiment_mode}
+                    if experiment_mode is not None
+                    else {}
+                ),
                 **(global_evidence_config if method in GOAL_PLUS_METHODS else {}),
                 **(
                     goal_plus_feature_config
@@ -378,6 +395,23 @@ def prepare(args: argparse.Namespace, profile: dict[str, Any]) -> Path:
                                 role_config=role_config,
                                 profile=profile,
                                 concurrency=concurrency,
+                            ),
+                            **(
+                                {
+                                    "sat_experiment": {
+                                        "mode": experiment_mode,
+                                        "global_evidence_mode": str(
+                                            profile.get(
+                                                "global_evidence_mode", "manual"
+                                            )
+                                        ),
+                                        "controller_env": sat_controller_environment(
+                                            experiment_mode
+                                        ),
+                                    }
+                                }
+                                if experiment_mode is not None
+                                else {}
                             ),
                         }
                     }
@@ -518,6 +552,11 @@ def prepare(args: argparse.Namespace, profile: dict[str, Any]) -> Path:
             ),
             "dataset_revision": profile["dataset_revision"],
             "task_ids": list(profile["task_ids"]),
+            **(
+                {"experiment_mode": profile["experiment_mode"]}
+                if profile.get("experiment_mode") is not None
+                else {}
+            ),
             "methods": methods,
             "model": model,
             "reasoning_effort": reasoning,
