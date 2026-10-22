@@ -10,21 +10,28 @@ SAT_CONTROLLER_EXPERIMENT_ENV = "GOAL_PLUS_CONTROLLER_EXPERIMENT"
 SAT_GLOBAL_EVIDENCE_MODE_ENV = "GOAL_PLUS_GLOBAL_EVIDENCE_MODE"
 SAT_ANNOTATOR_DISABLED_ENV = "GOAL_PLUS_EVIDENCE_ANNOTATOR_DISABLED"
 SAT_TASK_REFERENCE_ENV = "GOAL_PLUS_CONTROLLER_TASK_REFERENCE"
-SAT_EXPERIMENT_MODES = ("a1", "a2", "a3", "a4", "a5")
+SAT_EXPERIMENT_MODES = (
+    "a1", "a2", "a3", "a4", "a5",
+    "n0", "n0v", "n1", "n2", "n3",
+)
+SAT_MODE_CONDITIONS = {
+    "a1": "A1", "a2": "A2", "a3": "A3", "a4": "A4", "a5": "A5",
+    "n0": "N0", "n0v": "N0v", "n1": "N1", "n2": "N2", "n3": "N3",
+}
 
 
 def expected_condition(mode: str) -> str:
     if mode not in SAT_EXPERIMENT_MODES:
         raise ValueError(f"unsupported SAT experiment mode: {mode!r}")
-    return f"A{mode[1:]}"
+    return SAT_MODE_CONDITIONS[mode]
 
 
 def expected_global_evidence_mode(mode: str) -> str:
-    """A1 must not see peer evidence; A2-A5 use the shared manual view."""
+    """A1 and every N arm must not see peer evidence."""
 
     if mode not in SAT_EXPERIMENT_MODES:
         raise ValueError(f"unsupported SAT experiment mode: {mode!r}")
-    return "independent" if mode == "a1" else "manual"
+    return "manual" if mode in {"a2", "a3", "a4", "a5"} else "independent"
 
 
 def resolve_sat_experiment_mode(
@@ -77,6 +84,11 @@ def require_sat_controller_experiment(goal_plus_root: Path, mode: str) -> None:
 
     if mode not in SAT_EXPERIMENT_MODES:
         raise ValueError(f"unsupported SAT experiment mode: {mode!r}")
+    if mode == "n3":
+        raise RuntimeError(
+            "N3 requires rebuttal and RepairCredential closure, which is not "
+            "implemented yet; use N2."
+        )
     overlay = (
         goal_plus_root
         / "src"
@@ -86,7 +98,7 @@ def require_sat_controller_experiment(goal_plus_root: Path, mode: str) -> None:
     )
     if not overlay.is_file():
         raise RuntimeError(
-            "SAT A1-A5 requires a Goal Plus source with the controller "
+            "SAT A/N requires a Goal Plus source with the controller "
             "experiment overlay; selected source has no "
             f"{overlay.relative_to(goal_plus_root)}"
         )

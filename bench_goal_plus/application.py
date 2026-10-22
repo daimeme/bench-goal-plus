@@ -356,11 +356,14 @@ class BenchmarkAgent:
             not pi_provider_methods
             and selected_conditions
             and all(
-                condition in {"A1", "A2", "A3", "A4", "A5"}
+                condition in {
+                    "A1", "A2", "A3", "A4", "A5",
+                    "N0", "N0v", "N1", "N2", "N3",
+                }
                 for condition in selected_conditions
             )
         ):
-            # A1-A5 resolve to Goal Plus + Pi through resolve_condition; the
+            # A/N arms resolve to Goal Plus + Pi through resolve_condition; the
             # condition axis, not --method, carries the harness identity.
             pi_provider_methods = ("goal-plus-pi",)
         validate_pi_provider(
@@ -379,7 +382,10 @@ class BenchmarkAgent:
             non_goal_plus_conditions = [
                 condition
                 for condition in selected_conditions
-                if condition not in {"B3", "B4", "A1", "A2", "A3", "A4", "A5"}
+                if condition not in {
+                    "B3", "B4", "A1", "A2", "A3", "A4", "A5",
+                    "N0", "N0v", "N1", "N2", "N3",
+                }
             ]
             if (
                 unsupported_parallel_methods

@@ -7,7 +7,8 @@ from typing import Literal
 
 
 ConditionId = Literal[
-    "B0", "B1", "B2", "B3", "B4", "A1", "A2", "A3", "A4", "A5"
+    "B0", "B1", "B2", "B3", "B4", "A1", "A2", "A3", "A4", "A5",
+    "N0", "N0v", "N1", "N2", "N3",
 ]
 CoordinationVariant = Literal["way0", "way1", "way2"]
 
@@ -107,6 +108,33 @@ CONDITIONS: dict[ConditionId, Condition] = {
         "A5", "goal-plus-pi", True, True, False, False, True, True,
         None, None, True, None, "a5", "sat-gp/v2"
     ),
+    # New audit-brief attribution matrix. All arms keep the same
+    # parallel_loops topology and disable allocation, steering, shared cache,
+    # and the old SAT collaboration protocol. Only the verifier/audit mode
+    # changes.
+    "N0": Condition(
+        "N0", "goal-plus-pi", True, False, False, False, False, True,
+        None, None, True, None, "n0", None
+    ),
+    "N0v": Condition(
+        "N0v", "goal-plus-pi", True, False, False, False, False, True,
+        None, None, True, None, "n0v", None
+    ),
+    "N1": Condition(
+        "N1", "goal-plus-pi", True, False, False, False, False, True,
+        None, None, True, None, "n1", None
+    ),
+    "N2": Condition(
+        "N2", "goal-plus-pi", True, False, False, False, False, True,
+        None, None, True, None, "n2", None
+    ),
+    "N3": Condition(
+        "N3", "goal-plus-pi", True, False, False, False, False, True,
+        None, None, False,
+        "N3 requires rebuttal and RepairCredential closure, which is not "
+        "wired yet; use N2 until the closure path exists.",
+        "n3", None,
+    ),
 }
 
 VARIANT_LIMITATIONS: dict[CoordinationVariant, str | None] = {
@@ -149,7 +177,10 @@ def resolve_condition(
         )
     if condition.condition_id == "B0" and concurrency != 1:
         raise ValueError("B0 requires --concurrency 1")
-    if condition.condition_id in {"B1", "B3", "B4", "A1", "A2", "A3", "A4", "A5"} and concurrency < 2:
+    if condition.condition_id in {
+        "B1", "B3", "B4", "A1", "A2", "A3", "A4", "A5",
+        "N0", "N0v", "N1", "N2", "N3",
+    } and concurrency < 2:
         raise ValueError(f"{condition.condition_id} requires --concurrency >= 2")
     if coordination_variant is not None:
         if coordination_variant not in VARIANT_LIMITATIONS:

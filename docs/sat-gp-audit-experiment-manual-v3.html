@@ -261,8 +261,8 @@ details p,details ul{color:#52627a;margin:8px 0 0}
       <thead><tr><th>v3.1 新阻塞</th><th>现状</th><th>最窄 owner</th><th>门禁</th></tr></thead>
       <tbody>
         <tr><td><strong>VLIW 审计规则尚未接通</strong></td><td>verifier 已输出 <code>VerifierAudit</code>，broker 优先消费；task reference 和 VLIW defect 生产者基础版已接线；hidden-case/slot 机器判定仍缺</td><td><code>domain/audit.py</code>、<code>llm_verifier.py</code>、<code>application/audit.py</code></td><td>P0 续；否则 N1/N2 只能测通用 audit</td></tr>
-        <tr><td><strong>N 组 preset 未接</strong></td><td><code>audit_briefs</code> 的 off/shadow/apply 已实现，但还没有 N0v/N1/N2/N3 的 condition/profile</td><td><code>experiments/benchmark_compare/conditions.py</code>、profiles</td><td>N1/N2 前置</td></tr>
-        <tr><td><strong>没有 N 组 overlay</strong></td><td><code>controller_overlay.py</code> 仍只有 a1–a5</td><td><code>application/controller_overlay.py</code></td><td>Gate 0</td></tr>
+        <tr><td><strong>N0–N2 已接，N3 待闭环</strong></td><td>condition/profile/preset 覆盖 N0/N0v/N1/N2；N3 因 rebuttal/RepairCredential 未接线而显式阻塞</td><td><code>conditions.py</code>、<code>experiments/edgebench</code>、profiles</td><td>N1/N2 可跑；N3 等 closure</td></tr>
+        <tr><td><strong>N3 overlay 未接</strong></td><td><code>controller_overlay.py</code> 已接 n0/n0v/n1/n2；n3 仍缺失</td><td><code>application/controller_overlay.py</code></td><td>N3 前置</td></tr>
         <tr><td><strong>没有闭环</strong></td><td>无 rebuttal、accepted/ignored、RepairCredential 更新</td><td><code>application/audit.py</code>、<code>runtime.py</code></td><td>N3 前置</td></tr>
         <tr><td><strong>没有 audit 指标/脚本</strong></td><td>bench 只读 verifier/steering/cache/collaboration</td><td><code>bench_goal_plus/goal_plus_evidence.py</code></td><td>Gate 1</td></tr>
       </tbody>
@@ -339,7 +339,7 @@ details p,details ul{color:#52627a;margin:8px 0 0}
         <tr><td><strong>N0v</strong> <span class="tag detect">control</span></td><td><code>parallel_loops</code></td><td>on；只产出 diagnostic/audit 分数</td><td><code>off</code></td><td>off</td><td>compute-matched 控制：有 verifier，无 brief</td></tr>
         <tr><td><strong>N1</strong> <span class="tag protocol">shadow</span></td><td><code>parallel_loops</code></td><td>on</td><td><code>shadow</code></td><td>off</td><td>审计生产：brief 生成但不投递</td></tr>
         <tr><td><strong>N2</strong> <span class="tag new">pull</span></td><td><code>parallel_loops</code></td><td>on</td><td><code>apply</code></td><td>off</td><td>拉取投递：投递增量 N2−N1</td></tr>
-        <tr><td><strong>N3</strong> <span class="tag repair">closure</span></td><td><code>parallel_loops</code></td><td>on</td><td><code>apply</code></td><td>rebuttal + RepairCredential</td><td>闭环增量 N3−N2</td></tr>
+        <tr><td><strong>N3</strong> <span class="tag repair">blocked</span></td><td><code>parallel_loops</code></td><td>on</td><td><code>apply</code></td><td>rebuttal + RepairCredential（未接线）</td><td>闭环增量 N3−N2；等 closure</td></tr>
       </tbody>
     </table>
   </div>
@@ -425,7 +425,7 @@ details p,details ul{color:#52627a;margin:8px 0 0}
       <thead><tr><th>阶段</th><th>Benchmark</th><th>Arms</th><th>T / K / C / R</th><th>目的</th><th>门禁</th></tr></thead>
       <tbody>
         <tr><td><strong>Phase 0</strong><br><span class="tag base">pilot</span></td><td>local-vliw 或 EdgeBench VLIW 短预算</td><td>N0v, N1, N2</td><td>T=1800s；K=4；C=1；R=3</td><td>shadow 产出、apply 送达、审计精度、方差、headroom</td><td>Gate 0 / Gate 1</td></tr>
-        <tr><td><strong>Phase 1</strong><br><span class="tag new">formal</span></td><td>EdgeBench VLIW 官方 Judge</td><td>N0v, N1, N2, N3</td><td>T=7200s；K=4；C=1；R=3</td><td>投递与闭环的因果增量</td><td>Gate 2</td></tr>
+        <tr><td><strong>Phase 1</strong><br><span class="tag new">formal</span></td><td>EdgeBench VLIW 官方 Judge</td><td>N0v, N1, N2（N3 待 closure）</td><td>T=7200s；K=4；C=1；R=3</td><td>投递与闭环的因果增量</td><td>Gate 2</td></tr>
         <tr><td><strong>Phase 2</strong><br><span class="tag p2">optional</span></td><td>EdgeBench VLIW</td><td>N3 + final audit / rebuttal 二次审计</td><td>沿用 Phase 1</td><td>收尾审计、tie-break、二次裁决</td><td>Phase 1 出现 repair 信号</td></tr>
         <tr><td><strong>Phase 3</strong><br><span class="tag p2">optional</span></td><td>独立实验</td><td>审计策略库 / 反思</td><td>独立预算</td><td>反思→变异→跨题验证→冻结策略库</td><td>Phase 1/2 证明固定审计有效</td></tr>
         <tr><td><strong>Historical</strong><br><span class="tag p2">not main</span></td><td>v2.1 数据</td><td>A1–A5</td><td>不同 T / 不同合同</td><td>只作历史对照，不进入主归因</td><td>不设门禁</td></tr>
@@ -470,13 +470,13 @@ details p,details ul{color:#52627a;margin:8px 0 0}
     <div class="step"><div><h3>接线 closure</h3><p>N3 加 rebuttal、accepted/ignored、RepairCredential 更新；verified/rejected 只基于可机检 hard 结果。</p><div class="evidence">证据：rebuttal 记录、credential 状态、幂等重放</div></div></div>
     <div class="step"><div><h3>跑 Phase 0 pilot</h3><p>N0v/N1/N2，T=1800s，K=4，C=1，R=3。只回答接线、精度、方差和 headroom。</p><div class="evidence">证据：3 组 cell manifest、brief 统计、audit precision、N0v 分布</div></div></div>
     <div class="step"><div><h3>过 Gate 0 / Gate 1</h3><p>shadow 有产出、apply 有送达、audit precision 达标、N0v 有 headroom；否则修接线/审计规则，不进入 2h 矩阵。</p><div class="evidence">证据：delivery rate、precision/recall、MDE 估计</div></div></div>
-    <div class="step"><div><h3>跑 Phase 1 正式矩阵</h3><p>N0v/N1/N2/N3，T=7200s，K=4，C=1，R=3；Pi/Codex 各自 12 个 campaign，分开汇总。</p><div class="evidence">证据：12 个 run/变体、Judge 结果、token/cost、机制计数</div></div></div>
+    <div class="step"><div><h3>跑 Phase 1 正式矩阵</h3><p>N0v/N1/N2（N3 待 closure），T=7200s，K=4，C=1，R=3；Pi/Codex 各自分开汇总。</p><div class="evidence">证据：12 个 run/变体、Judge 结果、token/cost、机制计数</div></div></div>
     <div class="step"><div><h3>分析、报告与决策</h3><p>计算 N1−N0v、N2−N1、N3−N2、N2−N0v；按 task/campaign 配对，bootstrap CI；输出机会点或负结果。</p><div class="evidence">证据：report.md、xlsx、campaign-summary.json、决策记录</div></div></div>
   </div>
 
   <h3 style="margin-top:22px">参考命令（目标接口，待实现）</h3>
   <div class="callout amber">
-    <strong>命令是目标接口，不是当前可执行状态：</strong>当前仓库已有 verifier <code>audit</code> 基础版，但还没有 N 组 preset、hidden-case/slot 机器判定和 <code>sat_audit_*</code> 脚本（<code>audit_briefs=off|shadow|apply</code> 已可用）。以下命名需要在实现后新增；不要直接复制当作已接线证明。
+    <strong>命令是目标接口，不是当前可执行状态：</strong>当前仓库已有 verifier <code>audit</code> 基础版，N0–N2 的 condition/profile/preset 已接；还没有 N3 closure、hidden-case/slot 机器判定和 <code>sat_audit_*</code> 脚本。以下命名需要在实现后新增；不要直接复制当作已接线证明。
   </div>
   <pre><code># 0) 选择 sat-audit 实验源（含 SAT overlay + audit 投递）
 export BENCH_GOAL_PLUS_SOURCE_DIR=/path/to/muyuan/plugins/goal-plus
@@ -509,10 +509,11 @@ python3 scripts/sat_audit_summary.py \
   --labels runs/.../audit-labels.jsonl \
   --output runs/.../audit-precision.json
 
-# 4) Phase 1：N0v / N1 / N2 / N3，EdgeBench VLIW 官方 Judge
+# 4) Phase 1：N0v / N1 / N2，EdgeBench VLIW 官方 Judge（N3 待 closure）
 python3 scripts/bench.py check --preset edgebench-vliw-audit-n2-2h
 python3 scripts/bench.py setup --preset edgebench-vliw-audit-n2-2h
-for arm in n0v n1 n2 n3; do
+# N3 is blocked on closure; run it only after the rebuttal/RepairCredential path exists.
+for arm in n0v n1 n2; do
   python3 scripts/bench.py launch \
     --preset "edgebench-vliw-audit-${arm}-2h" \
     --campaign-id "edgebench-vliw-audit-${arm}-r1"
@@ -520,7 +521,7 @@ done
 
 # 5) 跨 campaign 汇总（扩展 v2.1 的 sat_edgebench_summary.py）
 python3 scripts/sat_edgebench_summary.py \
-  --campaign N0V=... --campaign N1=... --campaign N2=... --campaign N3=...
+  --campaign N0V=... --campaign N1=... --campaign N2=...
 </code></pre>
 
   <div class="pill-row">

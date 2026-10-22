@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "benchmark": "local-vliw",
+  "task_ids": [
+    "vliw_kernel_optimization"
+  ],
+  "methods": [
+    "goal-plus-pi"
+  ],
+  "model": "deepseek-v4-flash",
+  "reasoning_effort": "medium",
+  "wall_time_seconds": 1800,
+  "concurrency": 4,
+  "cell_concurrency": 1,
+  "worker_runtime_seconds": 1500,
+  "id": "vliw-audit-n2-30m-deepseek-v4-flash-medium",
+  "conditions": [
+    "N2"
+  ],
+  "experiment_mode": "n2",
+  "sat_protocol": null
+}

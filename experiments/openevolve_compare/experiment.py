@@ -1036,7 +1036,23 @@ def render_goal(
             f"with its verifier result. {mode_behavior}"
         )
     sat_text = ""
-    if sat_experiment_mode:
+    if sat_experiment_mode and sat_experiment_mode in {
+        "n0", "n0v", "n1", "n2",
+    }:
+        sat_text = (
+            f"- Audit arm `{sat_experiment_mode.upper()}` is frozen by the host "
+            "controller at SearchSpec freeze through "
+            f"`GOAL_PLUS_CONTROLLER_EXPERIMENT` with mode "
+            f"`{sat_experiment_mode}`.\n"
+            "- Do not set or override `strategy.verifier`, `strategy.steering`, "
+            "`shared_cache`, `strategy.config.audit_briefs`, or "
+            "`strategy.config.collaboration_protocol` yourself; the controller-owned "
+            "overlay installs the arm's verifier and audit mode at freeze time.\n"
+            "- Keep the pre-freeze spec on `strategy.orchestration_mode=\"parallel_loops\"` "
+            "and leave `strategy.allocation` unset. N arms do not enable steering, "
+            "shared cache, or the old SAT collaboration protocol.\n"
+        )
+    elif sat_experiment_mode:
         sat_text = (
             f"- SAT-GP arm `{sat_experiment_mode.upper()}` is frozen by the host "
             "controller at SearchSpec freeze through "

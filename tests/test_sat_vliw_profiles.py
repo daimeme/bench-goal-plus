@@ -14,11 +14,13 @@ from experiments.benchmark_compare.sat import (
     resolve_sat_experiment_mode,
     sat_controller_environment,
 )
-from experiments.benchmark_compare.conditions import CONDITIONS
+from experiments.benchmark_compare.conditions import CONDITIONS, resolve_condition
 
 
 ROOT = Path(__file__).parents[1]
 PROFILE_ROOT = ROOT / "benchmarks" / "profiles" / "vliw-sat"
+AUDIT_PROFILE_ROOT = ROOT / "benchmarks" / "profiles" / "vliw-audit"
+EDGE_PROFILE_ROOT = ROOT / "experiments" / "edgebench" / "profiles"
 
 
 class SatVliwProfileTest(unittest.TestCase):
@@ -107,6 +109,60 @@ class SatVliwProfileTest(unittest.TestCase):
         self.assertNotIn("shared_cache", profile)
         self.assertNotIn("verifier", profile)
         self.assertNotIn("steering", profile)
+
+    def test_audit_group_profiles_and_modes_are_declared(self) -> None:
+        for mode, condition_id in (
+            ("n0", "N0"),
+            ("n0v", "N0v"),
+            ("n1", "N1"),
+            ("n2", "N2"),
+        ):
+            spec = self.agent.resolve_spec(
+                preset_id=f"local-vliw-audit-{mode}-2h"
+            )
+            self.assertEqual(spec.conditions, (condition_id,))
+            profile = json.loads(
+                (
+                    AUDIT_PROFILE_ROOT
+                    / f"vliw-audit-{mode}-2h-deepseek-v4-flash-medium.json"
+                ).read_text(encoding="utf-8")
+            )
+            self.assertEqual(profile["experiment_mode"], mode)
+            self.assertEqual(profile["conditions"], [condition_id])
+            self.assertEqual(
+                resolve_sat_experiment_mode(CONDITIONS[condition_id], None),
+                mode,
+            )
+            environment = sat_controller_environment(mode)
+            self.assertEqual(
+                environment[SAT_GLOBAL_EVIDENCE_MODE_ENV], "independent"
+            )
+
+        edge = json.loads(
+            (
+                EDGE_PROFILE_ROOT
+                / "vliw-audit-n1-pi-deepseek-v4-flash-2h-k4-c1.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(edge["experiment_mode"], "n1")
+        self.assertEqual(edge["global_evidence_mode"], "independent")
+
+    def test_n3_is_explicitly_blocked_on_closure(self) -> None:
+        self.assertFalse(CONDITIONS["N3"].implemented)
+        with self.assertRaises(ValueError):
+            resolve_condition(
+                method="goal-plus-pi", concurrency=4, condition_id="N3"
+            )
+        with self.assertRaises(RuntimeError):
+            require_sat_controller_experiment(ROOT, "n3")
+
+    def test_audit_matrix_and_pilot_presets(self) -> None:
+        matrix = self.agent.resolve_spec(preset_id="local-vliw-audit-matrix-2h")
+        self.assertEqual(matrix.conditions, ("N0v", "N1", "N2"))
+        pilot = self.agent.resolve_spec(preset_id="local-vliw-audit-pilot-30m")
+        self.assertEqual(pilot.conditions, ("N0v", "N1", "N2"))
+        self.assertEqual(pilot.concurrency()["T"], 1800)
+        self.assertEqual(pilot.worker_runtime_seconds, 1500)
 
     def test_sat_mode_mapping_is_controller_owned(self) -> None:
         expected = {

@@ -84,6 +84,22 @@ class EdgeBenchSatTest(unittest.TestCase):
                 spec.concurrency(), {"T": 7200, "K": 4, "C": 1, "R": 1}
             )
 
+    def test_audit_n_profiles_and_presets(self) -> None:
+        for mode in ("n0", "n0v", "n1", "n2"):
+            _, profile = load_profile(
+                f"vliw-audit-{mode}-pi-deepseek-v4-flash-2h-k4-c1"
+            )
+            self.assertEqual(profile["experiment_mode"], mode)
+            self.assertEqual(profile["global_evidence_mode"], "independent")
+            self.assertEqual(profile["methods"], ["goal-plus-pi-provider"])
+            spec = BenchmarkAgent().resolve_spec(
+                preset_id=f"edgebench-vliw-audit-{mode}-pi-2h"
+            )
+            self.assertEqual(spec.methods, ("goal-plus-pi-provider",))
+            self.assertEqual(
+                spec.concurrency(), {"T": 7200, "K": 4, "C": 1, "R": 1}
+            )
+
     def test_controller_environment_keeps_a1_independent(self) -> None:
         self.assertEqual(
             sat_controller_environment("a1")["GOAL_PLUS_GLOBAL_EVIDENCE_MODE"],
