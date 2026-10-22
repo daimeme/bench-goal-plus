@@ -250,10 +250,11 @@ details p,details ul{color:#52627a;margin:8px 0 0}
   </div>
 
   <div class="callout amber">
-    <strong>旧执行链阻塞，v3.1 仍要带着修：</strong>
-    <code>history_limit</code> 缺失已在 sat 修复，但必须在同一 T 下复跑确认 A5 不再 0 diagnostics；
-    <code>.bench-runtime/*</code> 仍可能被算成 candidate changed files，触发 <code>changed_outside_allowed</code> 并移除 <code>diff</code>，需要在 bench 侧把 <code>GOAL_PLUS_VERIFIER_TMPDIR</code> 指到 workspace 外；
-    <code>campaign-summary.json</code> 的 <code>verifier_completed=0</code> 与跨 run 的 <code>selection_loss</code> 仍是口径 bug，汇总前必须修。
+    <strong>旧执行链阻塞已收敛：</strong>
+    <code>history_limit</code> 已在 sat 修复；bench 已排除 <code>.bench-runtime/</code> 并把
+    <code>GOAL_PLUS_VERIFIER_TMPDIR</code> 指到 run 目录外；<code>verifier_snapshot</code>
+    现在优先读 <code>verifier/records</code>；<code>selection_loss</code> 改为每个 run 内
+    计算后取均值。仍需在真实 pilot 上复核这些口径，而不是只依赖单元测试。
   </div>
 
   <div class="table-wrap" style="margin-top:16px">
@@ -476,7 +477,7 @@ details p,details ul{color:#52627a;margin:8px 0 0}
 
   <h3 style="margin-top:22px">参考命令（目标接口，待实现）</h3>
   <div class="callout amber">
-    <strong>命令是目标接口，不是当前可执行状态：</strong>当前仓库已有 verifier <code>audit</code> 基础版，N0–N3 的 condition/profile/preset 和 N3 回执闭环已接；还缺 hidden-case/slot 机器判定、final audit 和 <code>sat_audit_*</code> 脚本。以下命名需要在实现后新增；不要直接复制当作已接线证明。
+    <strong>命令是目标接口，不是当前可执行状态：</strong>当前仓库已有 verifier <code>audit</code> 基础版，N0–N3 的 condition/profile/preset、N3 回执闭环、bench <code>audit_snapshot</code> 和 <code>sat_audit_briefs.py</code> 已接；还缺 hidden-case/slot 机器判定和 final audit。以下命令可直接用于 N0–N3；不要把它当作完整 VLIW 语义审计的证明。
   </div>
   <pre><code># 0) 选择 sat-audit 实验源（含 SAT overlay + audit 投递）
 export BENCH_GOAL_PLUS_SOURCE_DIR=/path/to/muyuan/plugins/goal-plus
@@ -497,17 +498,14 @@ for arm in n0v n1 n2; do
   done
 done
 
-# 3) 审计导出、机检标注、汇总（新脚本，待实现）
-python3 scripts/sat_audit_export.py \
-  --campaign runs/benchmark-campaigns/local-vliw-audit-n1-r1 \
+# 3) 审计导出与汇总（brief + credential）
+python3 scripts/sat_audit_briefs.py export \
+  --cell-dir runs/benchmark-campaigns/local-vliw-audit-n1-r1/cells/... \
   --output runs/.../audit-briefs.jsonl
-python3 scripts/sat_audit_label.py \
-  --briefs runs/.../audit-briefs.jsonl \
-  --task-dir examples/vliw-kernel-optimization/workspace-template \
-  --output runs/.../audit-labels.jsonl
-python3 scripts/sat_audit_summary.py \
-  --labels runs/.../audit-labels.jsonl \
-  --output runs/.../audit-precision.json
+python3 scripts/sat_audit_briefs.py summary \
+  --cell-dir runs/benchmark-campaigns/local-vliw-audit-n1-r1/cells/... \
+  --output runs/.../audit-summary.json
+# 精度标签仍是独立的人工/机检输入；不要把未标注 brief 当作 correct。
 
 # 4) Phase 1：N0v / N1 / N2 / N3，EdgeBench VLIW 官方 Judge
 python3 scripts/bench.py check --preset edgebench-vliw-audit-n2-2h
@@ -529,7 +527,7 @@ python3 scripts/sat_edgebench_summary.py \
     <span class="pill"><b>campaign</b> experiments/benchmark_campaign/experiment.py</span>
     <span class="pill"><b>audit metrics</b> bench_goal_plus/goal_plus_evidence.py</span>
     <span class="pill"><b>presets</b> benchmarks/runners.json（新命名）</span>
-    <span class="pill"><b>audit scripts</b> scripts/sat_audit_*.py <span class="tag new">待实现</span></span>
+    <span class="pill"><b>audit scripts</b> scripts/sat_audit_briefs.py <span class="tag new">已实现</span></span>
     <span class="pill"><b>Phase 1</b> docs/sat-phase1-runbook.md</span>
     <span class="pill"><b>EdgeBench</b> experiments/edgebench/controller/</span>
   </div>
@@ -639,7 +637,7 @@ python3 scripts/sat_edgebench_summary.py \
         <li><code>audit_briefs=off|shadow|apply</code>；shadow 不投递</li>
         <li>N0v/N1/N2/N3 的 condition / profile / preset</li>
         <li>N3 rebuttal + RepairCredential 闭环</li>
-        <li>bench <code>audit_snapshot</code>、<code>sat_audit_*.py</code>、summary/test</li>
+        <li>bench <code>audit_snapshot</code>、<code>sat_audit_briefs.py</code>、summary/test 已接；hidden-case/slot 判定仍未接</li>
       </ul>
     </div>
   </div>

@@ -70,6 +70,13 @@ def sat_metrics_from_archive(archive_path: Path) -> dict[str, Any]:
     collaboration_claims = 0
     collaboration_claim_statuses: Counter[str] = Counter()
     collaboration_peer_audits = 0
+    audit_briefs = 0
+    audit_brief_statuses: Counter[str] = Counter()
+    audit_defect_kinds: Counter[str] = Counter()
+    audit_credentials = 0
+    audit_credential_statuses: Counter[str] = Counter()
+    verifier_task_payloads: list[dict[str, Any]] = []
+    verifier_record_payloads: list[dict[str, Any]] = []
     try:
         with tarfile.open(archive_path) as archive:
             for member in archive:
@@ -78,6 +85,7 @@ def sat_metrics_from_archive(archive_path: Path) -> dict[str, Any]:
                 name = member.name
                 relevant = (
                     ("/verifier/tasks/" in name and name.endswith(".json"))
+                    or ("/verifier/records/" in name and name.endswith(".json"))
                     or ("/steering-attempts/" in name and name.endswith(".json"))
                     or ("/steering-diagnostics/" in name and name.endswith(".json"))
                     or ("/shared-cache/" in name and name.endswith(".json"))
@@ -87,6 +95,8 @@ def sat_metrics_from_archive(archive_path: Path) -> dict[str, Any]:
                         "/collaboration/certificates/" in name
                         and name.endswith(".json")
                     )
+                    or ("/audit/briefs/" in name and name.endswith(".json"))
+                    or ("/audit/credentials/" in name and name.endswith(".json"))
                 )
                 if not relevant:
                     continue
@@ -94,39 +104,14 @@ def sat_metrics_from_archive(archive_path: Path) -> dict[str, Any]:
                 if extracted is None:
                     continue
                 payload = extracted.read()
-                if "/verifier/tasks/" in name and name.endswith(".json"):
+                if "/verifier/records/" in name and name.endswith(".json"):
                     record = _json(payload)
-                    if not record:
-                        continue
-                    verifier_records += 1
-                    outcome = record.get("outcome")
-                    if outcome == "completed":
-                        verifier_completed += 1
-                    elif outcome == "failed":
-                        verifier_failed += 1
-                    if record.get("steering_findings") is not None:
-                        verifier_with_diagnostics += 1
-                    usage = record.get("usage")
-                    if isinstance(usage, dict):
-                        verifier_usage_tokens += int(
-                            sum(
-                                value
-                                for key, value in usage.items()
-                                if key.endswith("tokens")
-                                and isinstance(value, (int, float))
-                                and not isinstance(value, bool)
-                            )
-                        )
-                    scores = record.get("scores")
-                    if isinstance(scores, dict):
-                        for key, value in scores.items():
-                            if isinstance(value, (int, float)) and not isinstance(
-                                value, bool
-                            ):
-                                score_totals[str(key)] = (
-                                    score_totals.get(str(key), 0.0) + float(value)
-                                )
-                                score_counts[str(key)] += 1
+                    if record:
+                        verifier_record_payloads.append(record)
+                elif "/verifier/tasks/" in name and name.endswith(".json"):
+                    record = _json(payload)
+                    if record:
+                        verifier_task_payloads.append(record)
                 elif "/steering-attempts/" in name and name.endswith(".json"):
                     attempt = _json(payload)
                     if not attempt:
@@ -196,8 +181,60 @@ def sat_metrics_from_archive(archive_path: Path) -> dict[str, Any]:
                     audits = certificate.get("peer_audits")
                     if isinstance(audits, list):
                         collaboration_peer_audits += len(audits)
+                elif "/audit/briefs/" in name and name.endswith(".json"):
+                    brief = _json(payload)
+                    if not brief:
+                        continue
+                    audit_briefs += 1
+                    audit_brief_statuses.update(
+                        [str(brief.get("status") or "unknown")]
+                    )
+                    defects = brief.get("defects")
+                    if isinstance(defects, list):
+                        audit_defect_kinds.update(
+                            str(defect.get("kind") or "unknown")
+                            for defect in defects
+                            if isinstance(defect, dict)
+                        )
+                elif "/audit/credentials/" in name and name.endswith(".json"):
+                    credential = _json(payload)
+                    if not credential:
+                        continue
+                    audit_credentials += 1
+                    audit_credential_statuses.update(
+                        [str(credential.get("status") or "unknown")]
+                    )
     except (tarfile.TarError, OSError):
         return {"available": False, "reason": "goal-plus-state.tar unreadable"}
+
+    for record in verifier_record_payloads or verifier_task_payloads:
+        verifier_records += 1
+        outcome = record.get("outcome")
+        if outcome == "completed":
+            verifier_completed += 1
+        elif outcome == "failed":
+            verifier_failed += 1
+        if record.get("steering_findings") is not None or record.get("audit") is not None:
+            verifier_with_diagnostics += 1
+        usage = record.get("usage")
+        if isinstance(usage, dict):
+            verifier_usage_tokens += int(
+                sum(
+                    value
+                    for key, value in usage.items()
+                    if key.endswith("tokens")
+                    and isinstance(value, (int, float))
+                    and not isinstance(value, bool)
+                )
+            )
+        scores = record.get("scores")
+        if isinstance(scores, dict):
+            for key, value in scores.items():
+                if isinstance(value, (int, float)) and not isinstance(value, bool):
+                    score_totals[str(key)] = (
+                        score_totals.get(str(key), 0.0) + float(value)
+                    )
+                    score_counts[str(key)] += 1
 
     text_means = {
         key: round(score_totals[key] / score_counts[key], 6)
@@ -209,6 +246,12 @@ def sat_metrics_from_archive(archive_path: Path) -> dict[str, Any]:
         for key in SAT_DIAGNOSTIC_SCORE_KEYS
         if score_counts.get(key)
     }
+    audit_delivered = sum(
+        audit_brief_statuses[status]
+        for status in {"delivered", "accepted", "ignored", "rebutted"}
+    )
+    audit_accepted = audit_brief_statuses.get("accepted", 0)
+    audit_verified = audit_credential_statuses.get("verified", 0)
     return {
         "available": True,
         "verifier_records": verifier_records,
@@ -246,4 +289,28 @@ def sat_metrics_from_archive(archive_path: Path) -> dict[str, Any]:
             sorted(collaboration_claim_statuses.items())
         ),
         "collaboration_peer_audits": collaboration_peer_audits,
+        "audit_briefs": audit_briefs,
+        "audit_briefs_pending": audit_brief_statuses.get("pending", 0),
+        "audit_briefs_delivered": audit_delivered,
+        "audit_briefs_accepted": audit_accepted,
+        "audit_briefs_ignored": audit_brief_statuses.get("ignored", 0),
+        "audit_briefs_rebutted": audit_brief_statuses.get("rebutted", 0),
+        "audit_brief_status_counts": dict(sorted(audit_brief_statuses.items())),
+        "audit_defects": sum(audit_defect_kinds.values()),
+        "audit_defect_kinds": dict(sorted(audit_defect_kinds.items())),
+        "audit_credentials": audit_credentials,
+        "audit_credentials_verified": audit_verified,
+        "audit_credentials_rejected": audit_credential_statuses.get("rejected", 0),
+        "audit_credential_status_counts": dict(
+            sorted(audit_credential_statuses.items())
+        ),
+        "audit_delivery_rate": (
+            audit_delivered / audit_briefs if audit_briefs else None
+        ),
+        "audit_acceptance_rate": (
+            audit_accepted / audit_delivered if audit_delivered else None
+        ),
+        "audit_verified_rate": (
+            audit_verified / audit_credentials if audit_credentials else None
+        ),
     }

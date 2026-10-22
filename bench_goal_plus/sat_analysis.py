@@ -90,6 +90,7 @@ def selection_metrics(
         }
 
     candidate_scores: dict[str, float] = {}
+    candidate_by_run: dict[str, dict[str, float]] = {}
     selected_scores: dict[str, float] = {}
     selected_ids: dict[str, str] = {}
     for run in run_list:
@@ -98,6 +99,7 @@ def selection_metrics(
             value = _numeric(score)
             if isinstance(candidate_id, str) and value is not None:
                 candidate_scores[f"{run_id}/{candidate_id}"] = value
+                candidate_by_run.setdefault(run_id, {})[candidate_id] = value
         selected_id = run.get("selected_candidate_id")
         selected_score = _numeric(run.get("selected_score"))
         if isinstance(selected_id, str) and selected_score is not None:
@@ -151,12 +153,22 @@ def selection_metrics(
         ),
     )
     best_candidate_id = best_key.split("/", 1)[-1]
-    selected_process_score = next(iter(selected_scores.values()), None)
+    selected_process_score = _mean(list(selected_scores.values()))
     selected_candidate_id = next(iter(selected_ids.values()), None)
     coverage_gain = directional_gain(seed_score, best_score, direction)
-    selection_loss = directional_gain(
-        selected_process_score, best_score, direction
-    )
+    # Selection loss is a within-run comparison.  Averaging run-level losses
+    # avoids comparing one run's selected candidate with another run's best.
+    run_losses: list[float] = []
+    run_matches: list[bool] = []
+    for run_id, scores in candidate_by_run.items():
+        run_best = directional_best(scores.values(), direction)
+        selected = selected_scores.get(run_id)
+        if run_best is not None and selected is not None:
+            loss = directional_gain(selected, run_best, direction)
+            if loss is not None:
+                run_losses.append(loss)
+            run_matches.append(selected == run_best)
+    selection_loss = _mean(run_losses)
     final_gap = directional_gain(final_score, best_score, direction)
     spread = max(candidate_scores.values()) - min(candidate_scores.values())
     denominator = abs(best_score) if best_score else None
@@ -187,12 +199,7 @@ def selection_metrics(
         "candidate_count": len(candidate_scores),
         "candidate_with_scores": len(candidate_scores),
         "candidate_score_spread": spread,
-        "selected_best_match": (
-            selected_process_score is not None
-            and selected_process_score == best_score
-            if direction in {"minimize", "maximize"}
-            else None
-        ),
+        "selected_best_match": all(run_matches) if run_matches else None,
     }
 
 
@@ -338,9 +345,15 @@ def phase0_summary(
         (*_arm_identity(record), str(record.get("condition") or record.get("method"))): record
         for record in records
     }
-    comparisons = (("A1", "A2"), ("A2", "A3"), ("A1", "A3"))
+    comparisons = (
+        ("A1", "A2"), ("A2", "A3"), ("A1", "A3"),
+        ("N0v", "N1"), ("N1", "N2"), ("N2", "N3"), ("N0v", "N2"),
+    )
     paired: dict[str, Any] = {}
+    present_conditions = set(by_condition)
     for base_condition, arm_condition in comparisons:
+        if base_condition not in present_conditions and arm_condition not in present_conditions:
+            continue
         pairs = []
         for key, base_record in indexed.items():
             if key[-1] != base_condition:
@@ -377,13 +390,27 @@ def phase0_summary(
             "pairs": pairs,
         }
 
-    a1 = arms.get("A1") or {}
+    baseline = (
+        "A1" if "A1" in arms else "N0v" if "N0v" in arms else next(iter(arms), "A1")
+    )
+    baseline_arm = arms.get(baseline) or {}
     headroom = {
-        "a1_final_mean": a1.get("final_mean"),
-        "a1_final_stdev": a1.get("final_stdev"),
-        "a1_coverage_rate": a1.get("coverage_rate"),
-        "a1_selection_loss_mean": a1.get("selection_loss_mean"),
-        "a1_candidate_score_spread_mean": a1.get("candidate_score_spread_mean"),
+        "baseline": baseline,
+        "baseline_final_mean": baseline_arm.get("final_mean"),
+        "baseline_final_stdev": baseline_arm.get("final_stdev"),
+        "baseline_coverage_rate": baseline_arm.get("coverage_rate"),
+        "baseline_selection_loss_mean": baseline_arm.get("selection_loss_mean"),
+        "baseline_candidate_score_spread_mean": baseline_arm.get(
+            "candidate_score_spread_mean"
+        ),
+        # Historical keys remain readable for the A1 pilot.
+        "a1_final_mean": arms.get("A1", {}).get("final_mean"),
+        "a1_final_stdev": arms.get("A1", {}).get("final_stdev"),
+        "a1_coverage_rate": arms.get("A1", {}).get("coverage_rate"),
+        "a1_selection_loss_mean": arms.get("A1", {}).get("selection_loss_mean"),
+        "a1_candidate_score_spread_mean": arms.get("A1", {}).get(
+            "candidate_score_spread_mean"
+        ),
     }
     return {
         "schema_version": 1,
@@ -396,6 +423,7 @@ def phase0_summary(
             "Paired differences use score.directional_gain, which is already direction-aware.",
             "A1/A2 use parallel_loops; A3 uses adaptive_search with allocation disabled.",
             "A3 - A2 includes the orchestration switch and is a mechanism check, not a score gain.",
+            "N1 - N0v isolates audit production, N2 - N1 isolates delivery, N2 - N0v is the total audit effect, and N3 - N2 isolates closure.",
             "mde_80pct_approx is an approximate two-sided alpha=0.05, 80% power planning value.",
             "Coverage=covered means the candidate pool beat the seed before final selection.",
         ],
@@ -449,15 +477,16 @@ def render_phase0_markdown(summary: Mapping[str, Any]) -> str:
     lines.extend(
         [
             "",
-            "## Headroom (A1)",
+            f"## Headroom ({headroom.get('baseline') or 'A1'})",
             "",
-            f"- final mean: {headroom.get('a1_final_mean')}",
-            f"- final SD: {headroom.get('a1_final_stdev')}",
-            f"- coverage rate: {headroom.get('a1_coverage_rate')}",
-            f"- selection loss mean: {headroom.get('a1_selection_loss_mean')}",
-            f"- candidate score spread mean: {headroom.get('a1_candidate_score_spread_mean')}",
+            f"- final mean: {headroom.get('baseline_final_mean')}",
+            f"- final SD: {headroom.get('baseline_final_stdev')}",
+            f"- coverage rate: {headroom.get('baseline_coverage_rate')}",
+            f"- selection loss mean: {headroom.get('baseline_selection_loss_mean')}",
+            f"- candidate score spread mean: {headroom.get('baseline_candidate_score_spread_mean')}",
             "",
             "A3 is a recognition arm; do not read A3 - A2 as a hard-score gain.",
+            "N1 - N0v is audit production, N2 - N1 is delivery, N3 - N2 is closure.",
         ]
     )
     return "\n".join(lines) + "\n"

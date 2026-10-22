@@ -27,10 +27,12 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 
 def iter_verifier_records(run_dir: Path) -> list[dict[str, Any]]:
-    root = run_dir / "verifier" / "tasks"
+    paths = sorted((run_dir / "verifier" / "records").glob("record_*.json"))
+    if not paths:
+        paths = sorted((run_dir / "verifier" / "tasks").glob("verifier_*.json"))
     return [
         payload
-        for path in sorted(root.glob("verifier_*.json"))
+        for path in paths
         for payload in [_read_json(path)]
         if payload
     ]
@@ -85,6 +87,50 @@ def verifier_claim_rows(run_dir: Path) -> list[dict[str, Any]]:
                     iteration=iteration,
                 )
             )
+        audit = record.get("audit")
+        if isinstance(audit, Mapping):
+            claim = audit.get("claim") if isinstance(audit.get("claim"), Mapping) else {}
+            statement = claim.get("statement")
+            if isinstance(statement, str) and statement.strip():
+                rows.append(
+                    {
+                        "claim_id": f"{record.get('record_id')}:audit_claim",
+                        "kind": "audit_claim",
+                        "statement": statement,
+                        "evidence_refs": list(claim.get("evidence_refs") or []),
+                        "scope_ref": claim.get("scope"),
+                        "score": None,
+                        "record_id": record.get("record_id"),
+                        "candidate_id": candidate_id,
+                        "iteration": iteration,
+                        "created_at": record.get("created_at"),
+                    }
+                )
+            defects = audit.get("defects")
+            if isinstance(defects, list):
+                for defect in defects:
+                    if not isinstance(defect, Mapping):
+                        continue
+                    observation = defect.get("observation")
+                    if not isinstance(observation, str) or not observation.strip():
+                        continue
+                    rows.append(
+                        {
+                            "claim_id": (
+                                f"{record.get('record_id')}:audit_defect:"
+                                f"{defect.get('defect_id')}"
+                            ),
+                            "kind": f"audit_defect:{defect.get('kind') or 'unknown'}",
+                            "statement": observation,
+                            "evidence_refs": list(defect.get("evidence_refs") or []),
+                            "scope_ref": None,
+                            "score": defect.get("confidence"),
+                            "record_id": record.get("record_id"),
+                            "candidate_id": candidate_id,
+                            "iteration": iteration,
+                            "created_at": record.get("created_at"),
+                        }
+                    )
         rationales = record.get("score_rationales")
         scores = record.get("scores")
         if isinstance(rationales, Mapping):
@@ -118,6 +164,104 @@ def export_claims(run_dir: Path, output: Path) -> int:
         encoding="utf-8",
     )
     return len(rows)
+
+
+def iter_audit_briefs(run_dir: Path) -> list[dict[str, Any]]:
+    root = run_dir / "audit" / "briefs"
+    return [
+        payload
+        for path in sorted(root.glob("*.json"))
+        for payload in [_read_json(path)]
+        if payload
+    ]
+
+
+def iter_audit_credentials(run_dir: Path) -> list[dict[str, Any]]:
+    root = run_dir / "audit" / "credentials"
+    return [
+        payload
+        for path in sorted(root.glob("*.json"))
+        for payload in [_read_json(path)]
+        if payload
+    ]
+
+
+def audit_brief_rows(run_dir: Path) -> list[dict[str, Any]]:
+    """Flatten one run's briefs and credentials for offline inspection."""
+
+    rows: list[dict[str, Any]] = []
+    credentials = {
+        str(item.get("audit_brief_id") or ""): item
+        for item in iter_audit_credentials(run_dir)
+        if isinstance(item, dict)
+    }
+    for brief in iter_audit_briefs(run_dir):
+        claim = brief.get("claim") if isinstance(brief.get("claim"), dict) else {}
+        repair = brief.get("repair") if isinstance(brief.get("repair"), dict) else {}
+        credential = credentials.get(str(brief.get("brief_id") or ""))
+        defects = brief.get("defects")
+        if not isinstance(defects, list) or not defects:
+            defects = [{}]
+        for defect in defects:
+            if not isinstance(defect, dict):
+                defect = {}
+            rows.append(
+                {
+                    "run_id": run_dir.name,
+                    "brief_id": brief.get("brief_id"),
+                    "candidate_id": brief.get("candidate_id"),
+                    "status": brief.get("status"),
+                    "source_record_id": brief.get("source_record_id"),
+                    "source_settlement_id": brief.get("source_settlement_id"),
+                    "source_iteration": brief.get("source_iteration"),
+                    "claim": claim.get("statement"),
+                    "claim_scope": claim.get("scope"),
+                    "defect_id": defect.get("defect_id"),
+                    "defect_kind": defect.get("kind"),
+                    "observation": defect.get("observation"),
+                    "counterfactual": defect.get("counterfactual"),
+                    "confidence": defect.get("confidence"),
+                    "repair_op": repair.get("op"),
+                    "repair_action": repair.get("action"),
+                    "response_reason": brief.get("response_reason"),
+                    "credential_status": (
+                        credential.get("status") if credential else None
+                    ),
+                    "credential_id": (
+                        credential.get("credential_id") if credential else None
+                    ),
+                    "before_hard_score": (
+                        credential.get("before_hard_score") if credential else None
+                    ),
+                    "after_hard_score": (
+                        credential.get("after_hard_score") if credential else None
+                    ),
+                    "created_at": brief.get("created_at"),
+                }
+            )
+    return rows
+
+
+def export_audit_briefs(cell_dir: Path, output: Path) -> int:
+    """Export all audit brief/credential rows from one campaign cell."""
+
+    run_root = cell_dir.expanduser().absolute() / "workspace" / ".gp" / "runs"
+    rows: list[dict[str, Any]] = []
+    for run_dir in sorted(run_root.glob("run_*")):
+        rows.extend(audit_brief_rows(run_dir))
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        "\n".join(json.dumps(row, ensure_ascii=False, sort_keys=True) for row in rows)
+        + ("\n" if rows else ""),
+        encoding="utf-8",
+    )
+    return len(rows)
+
+
+def audit_brief_summary(run_dir: Path) -> dict[str, Any]:
+    from bench_goal_plus.goal_plus_evidence import audit_snapshot
+
+    return audit_snapshot(run_dir)
 
 
 def export_cell_claims(cell_dir: Path, output: Path) -> int:

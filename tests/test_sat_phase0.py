@@ -48,6 +48,28 @@ class SatPhase0Test(unittest.TestCase):
         self.assertEqual(metrics["best_candidate_id"], "c002")
         self.assertFalse(metrics["selected_best_match"])
 
+    def test_selection_loss_is_within_each_run(self) -> None:
+        runs = [
+            {
+                "run_id": "run_1",
+                "candidate_best_scores": {"c001": 95, "c002": 90},
+                "selected_candidate_id": "c001",
+                "selected_score": 95,
+            },
+            {
+                "run_id": "run_2",
+                "candidate_best_scores": {"c003": 80, "c004": 85},
+                "selected_candidate_id": "c003",
+                "selected_score": 80,
+            },
+        ]
+        metrics = selection_metrics(
+            runs, seed_score=100, final_score=80, direction="minimize"
+        )
+        self.assertEqual(metrics["selection_loss"], 2.5)
+        self.assertFalse(metrics["selected_best_match"])
+        self.assertEqual(metrics["selected_process_score"], 87.5)
+
     def test_pilot_preset_is_matched_and_short(self) -> None:
         spec = BenchmarkAgent().resolve_spec(preset_id="local-vliw-sat-pilot-30m")
         self.assertEqual(spec.conditions, ("A1", "A2", "A3"))

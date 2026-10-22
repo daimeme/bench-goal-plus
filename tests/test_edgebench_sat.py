@@ -148,6 +148,13 @@ class EdgeBenchSatTest(unittest.TestCase):
                 "steering_findings": {"hypothesis": {"statement": "x"}},
                 "usage": {"input_tokens": 10, "output_tokens": 5},
             },
+            "runs/run_1/verifier/records/record_1.json": {
+                "record_id": "record_1",
+                "outcome": "completed",
+                "scores": {"claim_specificity": 0.8, "correctness_gap": 0.2},
+                "audit": {"claim": {"statement": "x"}, "defects": []},
+                "usage": {"input_tokens": 10, "output_tokens": 5},
+            },
             "runs/run_1/steering-attempts/a1.json": {
                 "observation": "returned",
                 "delivery": {"mode": "apply"},
@@ -175,6 +182,13 @@ class EdgeBenchSatTest(unittest.TestCase):
                 "claims": [{"status": "supported"}],
                 "peer_audits": [{"status": "passed"}],
             },
+            "runs/run_1/audit/briefs/audit_1.json": {
+                "status": "accepted",
+                "defects": [{"kind": "semantics"}],
+            },
+            "runs/run_1/audit/credentials/audit_cred_1.json": {
+                "status": "verified"
+            },
         }
         with tarfile.open(archive_path, "w") as archive:
             for name, payload in files.items():
@@ -199,6 +213,11 @@ class EdgeBenchSatTest(unittest.TestCase):
         self.assertEqual(metrics["collaboration_status"], "present")
         self.assertEqual(metrics["collaboration_events"], 2)
         self.assertEqual(metrics["collaboration_claims"], 1)
+        self.assertEqual(metrics["audit_briefs"], 1)
+        self.assertEqual(metrics["audit_briefs_accepted"], 1)
+        self.assertEqual(metrics["audit_credentials_verified"], 1)
+        self.assertEqual(metrics["audit_acceptance_rate"], 1.0)
+        self.assertEqual(metrics["audit_verified_rate"], 1.0)
 
     def test_edgebench_phase1_summary_pairs_repeats(self) -> None:
         campaign_dirs = {}
@@ -245,6 +264,53 @@ class EdgeBenchSatTest(unittest.TestCase):
         self.assertEqual(summary["paired"]["A2 - A1"]["mean_difference"], 5.0)
         self.assertEqual(
             summary["arms"]["A1"]["sat_totals"]["verifier_records"], 4
+        )
+
+
+    def test_edgebench_phase1_summary_pairs_audit_arms(self) -> None:
+        campaign_dirs = {}
+        for arm, scores in (("N0V", (70.0, 72.0)), ("N1", (75.0, 77.0))):
+            for repeat, score in enumerate(scores, start=1):
+                directory = self.scratch / f"{arm}-r{repeat}"
+                write_json(
+                    directory / "comparison.json",
+                    {
+                        "campaign_id": f"{arm}-r{repeat}",
+                        "experiment_mode": arm.lower(),
+                        "cells": [
+                            {
+                                "task_id": "vliw_kernel_optimization",
+                                "method": "goal-plus-pi-provider",
+                                "model": "deepseek/deepseek-v4-flash",
+                                "reasoning_effort": "medium",
+                                "wall_time_seconds": 7200,
+                                "sat_experiment_mode": arm.lower(),
+                                "valid_trajectories": 1,
+                                "official_edgebench_comparable": True,
+                                "completion_evidence": {"passed": True},
+                                "best": {
+                                    "edgebench_score": score,
+                                    "raw_score": 1000.0 + score,
+                                },
+                                "sat": {
+                                    "verifier_records": 2,
+                                    "audit_briefs": 1,
+                                    "audit_briefs_delivered": 1,
+                                    "audit_briefs_accepted": 1,
+                                    "audit_credentials": 1,
+                                    "audit_credentials_verified": 1,
+                                },
+                            }
+                        ],
+                    },
+                )
+                campaign_dirs.setdefault(arm, []).append(directory)
+        summary = edgebench_phase1_summary(campaign_dirs)
+        self.assertEqual(summary["arms"]["N1"]["score_mean"], 76.0)
+        self.assertEqual(summary["paired"]["N1 - N0v"]["paired_count"], 2)
+        self.assertEqual(summary["paired"]["N1 - N0v"]["mean_difference"], 5.0)
+        self.assertEqual(
+            summary["arms"]["N1"]["sat_totals"]["audit_credentials_verified"], 2
         )
 
 

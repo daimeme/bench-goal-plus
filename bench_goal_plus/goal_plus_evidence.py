@@ -463,9 +463,18 @@ def shared_cache_snapshot(run_dir: Path) -> dict[str, Any]:
 def verifier_snapshot(run_dir: Path) -> dict[str, Any]:
     """Summarize LLM verifier records, including SAT text-description scores."""
 
+    record_paths = sorted(
+        (run_dir / "verifier" / "records").glob("record_*.json")
+    )
+    if not record_paths:
+        # Older runs stored terminal outcomes under tasks/; keep the fallback
+        # so historical artifacts remain readable.
+        record_paths = sorted(
+            (run_dir / "verifier" / "tasks").glob("verifier_*.json")
+        )
     records = [
         payload
-        for path in sorted((run_dir / "verifier" / "tasks").glob("verifier_*.json"))
+        for path in record_paths
         for payload in [_read_json(path)]
         if payload
     ]
@@ -513,6 +522,67 @@ def verifier_snapshot(run_dir: Path) -> dict[str, Any]:
     }
 
 
+def audit_snapshot(run_dir: Path) -> dict[str, Any]:
+    """Summarize audit briefs and repair credentials without importing Goal Plus."""
+
+    briefs = [
+        payload
+        for path in sorted((run_dir / "audit" / "briefs").glob("*.json"))
+        for payload in [_read_json(path)]
+        if payload
+    ]
+    credentials = [
+        payload
+        for path in sorted((run_dir / "audit" / "credentials").glob("*.json"))
+        for payload in [_read_json(path)]
+        if payload
+    ]
+    statuses = Counter(str(item.get("status") or "unknown") for item in briefs)
+    credential_statuses = Counter(
+        str(item.get("status") or "unknown") for item in credentials
+    )
+    defect_kinds: Counter[str] = Counter()
+    for brief in briefs:
+        defects = brief.get("defects")
+        if isinstance(defects, list):
+            defect_kinds.update(
+                str(defect.get("kind") or "unknown")
+                for defect in defects
+                if isinstance(defect, Mapping)
+            )
+    delivered_statuses = {"delivered", "accepted", "ignored", "rebutted"}
+    delivered = sum(statuses[status] for status in delivered_statuses)
+    accepted = statuses.get("accepted", 0)
+    total = len(briefs)
+    credential_total = len(credentials)
+    return {
+        "status": "present" if briefs or credentials else "absent",
+        "briefs_total": total,
+        "briefs_pending": statuses.get("pending", 0),
+        "briefs_delivered": delivered,
+        "briefs_accepted": accepted,
+        "briefs_ignored": statuses.get("ignored", 0),
+        "briefs_rebutted": statuses.get("rebutted", 0),
+        "briefs_superseded": statuses.get("superseded", 0),
+        "briefs_expired": statuses.get("expired", 0),
+        "brief_status_counts": dict(sorted(statuses.items())),
+        "defects_total": sum(defect_kinds.values()),
+        "defect_kinds": dict(sorted(defect_kinds.items())),
+        "credentials_total": credential_total,
+        "credentials_queued": credential_statuses.get("queued", 0),
+        "credentials_verified": credential_statuses.get("verified", 0),
+        "credentials_rejected": credential_statuses.get("rejected", 0),
+        "credential_status_counts": dict(sorted(credential_statuses.items())),
+        "audit_delivery_rate": delivered / total if total else None,
+        "audit_acceptance_rate": accepted / delivered if delivered else None,
+        "audit_verified_rate": (
+            credential_statuses.get("verified", 0) / credential_total
+            if credential_total
+            else None
+        ),
+    }
+
+
 def sat_metrics(run_dir: Path) -> dict[str, Any]:
     """Return the SAT mechanism evidence attached to one Goal Plus run."""
 
@@ -522,6 +592,7 @@ def sat_metrics(run_dir: Path) -> dict[str, Any]:
         "evidence": global_evidence_reads(run_dir),
         "shared_cache": shared_cache_snapshot(run_dir),
         "collaboration": collaboration_snapshot(run_dir),
+        "audit": audit_snapshot(run_dir),
     }
 
 
@@ -549,6 +620,16 @@ SAT_METRIC_FIELDS = (
     "collaboration_claims",
     "collaboration_peer_audits",
     "collaboration_evidence_reads",
+    "audit_briefs",
+    "audit_briefs_pending",
+    "audit_briefs_delivered",
+    "audit_briefs_accepted",
+    "audit_briefs_ignored",
+    "audit_briefs_rebutted",
+    "audit_credentials",
+    "audit_credentials_verified",
+    "audit_credentials_rejected",
+    "audit_defects",
 )
 
 
@@ -564,6 +645,11 @@ def aggregate_sat_metrics(items: list[dict[str, Any]]) -> dict[str, Any]:
             "metrics": {field: 0 for field in SAT_METRIC_FIELDS},
             "runs_with_sat": 0,
             "collaboration_status": "absent",
+            "audit_status": "absent",
+            "audit_defect_kinds": {},
+            "audit_delivery_rate": None,
+            "audit_acceptance_rate": None,
+            "audit_verified_rate": None,
             "text_score_means": {},
             "diagnostic_score_means": {},
             "steering_actions": {},
@@ -578,12 +664,15 @@ def aggregate_sat_metrics(items: list[dict[str, Any]]) -> dict[str, Any]:
     observations: dict[str, int] = {}
     diagnostic_actions: dict[str, int] = {}
     collaboration_status = "absent"
+    audit_status = "absent"
+    audit_defect_kinds: dict[str, int] = {}
     for item in items:
         verifier = item.get("verifier") or {}
         steering = item.get("steering") or {}
         evidence = item.get("evidence") or {}
         shared_cache = item.get("shared_cache") or {}
         collaboration = item.get("collaboration") or {}
+        audit = item.get("audit") or {}
         metrics["verifier_records"] += int(verifier.get("verifier_records") or 0)
         metrics["verifier_completed"] += int(verifier.get("verifier_completed") or 0)
         metrics["verifier_failed"] += int(verifier.get("verifier_failed") or 0)
@@ -645,6 +734,26 @@ def aggregate_sat_metrics(items: list[dict[str, Any]]) -> dict[str, Any]:
         )
         if collaboration.get("status") == "present":
             collaboration_status = "present"
+        metrics["audit_briefs"] += int(audit.get("briefs_total") or 0)
+        metrics["audit_briefs_pending"] += int(audit.get("briefs_pending") or 0)
+        metrics["audit_briefs_delivered"] += int(audit.get("briefs_delivered") or 0)
+        metrics["audit_briefs_accepted"] += int(audit.get("briefs_accepted") or 0)
+        metrics["audit_briefs_ignored"] += int(audit.get("briefs_ignored") or 0)
+        metrics["audit_briefs_rebutted"] += int(audit.get("briefs_rebutted") or 0)
+        metrics["audit_credentials"] += int(audit.get("credentials_total") or 0)
+        metrics["audit_credentials_verified"] += int(
+            audit.get("credentials_verified") or 0
+        )
+        metrics["audit_credentials_rejected"] += int(
+            audit.get("credentials_rejected") or 0
+        )
+        metrics["audit_defects"] += int(audit.get("defects_total") or 0)
+        if audit.get("status") == "present":
+            audit_status = "present"
+        for kind, count in (audit.get("defect_kinds") or {}).items():
+            audit_defect_kinds[str(kind)] = (
+                audit_defect_kinds.get(str(kind), 0) + int(count)
+            )
         for key, value in (verifier.get("verifier_text_score_means") or {}).items():
             if isinstance(value, (int, float)):
                 text_scores.setdefault(str(key), []).append(float(value))
@@ -661,10 +770,28 @@ def aggregate_sat_metrics(items: list[dict[str, Any]]) -> dict[str, Any]:
             steering.get("steering_diagnostic_actions") or {}
         ).items():
             diagnostic_actions[str(key)] = diagnostic_actions.get(str(key), 0) + int(value)
+    audit_total = metrics["audit_briefs"]
+    audit_delivered = metrics["audit_briefs_delivered"]
+    audit_credentials = metrics["audit_credentials"]
     return {
         "metrics": metrics,
         "runs_with_sat": len(items),
         "collaboration_status": collaboration_status,
+        "audit_status": audit_status,
+        "audit_defect_kinds": dict(sorted(audit_defect_kinds.items())),
+        "audit_delivery_rate": (
+            audit_delivered / audit_total if audit_total else None
+        ),
+        "audit_acceptance_rate": (
+            metrics["audit_briefs_accepted"] / audit_delivered
+            if audit_delivered
+            else None
+        ),
+        "audit_verified_rate": (
+            metrics["audit_credentials_verified"] / audit_credentials
+            if audit_credentials
+            else None
+        ),
         "text_score_means": {
             key: round(_mean_known(values) or 0.0, 6)
             for key, values in sorted(text_scores.items())
@@ -692,12 +819,20 @@ def merge_sat_aggregates(items: list[dict[str, Any]]) -> dict[str, Any]:
     observations: dict[str, int] = {}
     diagnostic_actions: dict[str, int] = {}
     collaboration_status = "absent"
+    audit_status = "absent"
+    audit_defect_kinds: dict[str, int] = {}
     for item in known:
         for key, value in (item.get("metrics") or {}).items():
             if key in metrics:
                 metrics[key] += int(value or 0)
         if item.get("collaboration_status") == "present":
             collaboration_status = "present"
+        if item.get("audit_status") == "present":
+            audit_status = "present"
+        for kind, count in (item.get("audit_defect_kinds") or {}).items():
+            audit_defect_kinds[str(kind)] = (
+                audit_defect_kinds.get(str(kind), 0) + int(count)
+            )
         for key, value in (item.get("text_score_means") or {}).items():
             if isinstance(value, (int, float)):
                 text_scores.setdefault(str(key), []).append(float(value))
@@ -710,10 +845,28 @@ def merge_sat_aggregates(items: list[dict[str, Any]]) -> dict[str, Any]:
             observations[str(key)] = observations.get(str(key), 0) + int(value)
         for key, value in (item.get("steering_diagnostic_actions") or {}).items():
             diagnostic_actions[str(key)] = diagnostic_actions.get(str(key), 0) + int(value)
+    audit_total = metrics["audit_briefs"]
+    audit_delivered = metrics["audit_briefs_delivered"]
+    audit_credentials = metrics["audit_credentials"]
     return {
         "metrics": metrics,
         "runs_with_sat": sum(int(item.get("runs_with_sat") or 0) for item in known),
         "collaboration_status": collaboration_status,
+        "audit_status": audit_status,
+        "audit_defect_kinds": dict(sorted(audit_defect_kinds.items())),
+        "audit_delivery_rate": (
+            audit_delivered / audit_total if audit_total else None
+        ),
+        "audit_acceptance_rate": (
+            metrics["audit_briefs_accepted"] / audit_delivered
+            if audit_delivered
+            else None
+        ),
+        "audit_verified_rate": (
+            metrics["audit_credentials_verified"] / audit_credentials
+            if audit_credentials
+            else None
+        ),
         "text_score_means": {
             key: round(_mean_known(values) or 0.0, 6)
             for key, values in sorted(text_scores.items())

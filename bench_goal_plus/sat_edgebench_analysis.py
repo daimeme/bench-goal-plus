@@ -12,8 +12,19 @@ from typing import Any, Iterable, Mapping
 from bench_goal_plus.sat_analysis import bootstrap_ci
 
 
-SAT_ARMS = ("A1", "A2", "A3", "A4", "A5")
-SAT_CONTRASTS = (("A1", "A2"), ("A2", "A3"), ("A3", "A4"), ("A4", "A5"), ("A1", "A5"))
+SAT_ARMS = (
+    "A1", "A2", "A3", "A4", "A5",
+    "N0", "N0v", "N1", "N2", "N3",
+)
+SAT_CONTRASTS = (
+    ("A1", "A2"), ("A2", "A3"), ("A3", "A4"), ("A4", "A5"), ("A1", "A5"),
+    ("N0v", "N1"), ("N1", "N2"), ("N2", "N3"), ("N0v", "N2"),
+)
+
+
+def _canonical_arm(value: Any) -> str:
+    text = str(value or "")
+    return {arm.lower(): arm for arm in SAT_ARMS}.get(text.lower(), text)
 
 
 def _number(value: Any) -> float | None:
@@ -52,14 +63,14 @@ def load_edgebench_campaign(path: str | Path) -> dict[str, Any]:
     cell = cells[0]
     best = cell.get("best") or {}
     sat = cell.get("sat") or ((best.get("goal_plus") or {}).get("sat") or {})
-    mode = str(
+    mode = _canonical_arm(
         cell.get("sat_experiment_mode")
         or payload.get("experiment_mode")
         or ""
-    ).upper()
+    )
     if mode not in SAT_ARMS:
         raise ValueError(
-            f"campaign has no SAT experiment_mode (A1-A5): {comparison_path}"
+            f"campaign has no supported SAT experiment_mode: {comparison_path}"
         )
     return {
         "campaign_id": payload.get("campaign_id") or campaign_dir.name,
@@ -90,7 +101,7 @@ def edgebench_phase1_summary(
 ) -> dict[str, Any]:
     loaded: dict[str, list[dict[str, Any]]] = {}
     for mode, paths in campaigns.items():
-        arm = str(mode).upper()
+        arm = _canonical_arm(mode)
         if arm not in SAT_ARMS:
             raise ValueError(f"unsupported SAT arm: {mode!r}")
         loaded[arm] = [load_edgebench_campaign(path) for path in paths]
@@ -108,6 +119,12 @@ def edgebench_phase1_summary(
         "global_evidence_peer_reads",
         "collaboration_events",
         "collaboration_certificates",
+        "audit_briefs",
+        "audit_briefs_delivered",
+        "audit_briefs_accepted",
+        "audit_credentials",
+        "audit_credentials_verified",
+        "audit_defects",
     )
     for arm, items in sorted(loaded.items()):
         scores = [item["score"] for item in items if item["score"] is not None]
@@ -154,6 +171,8 @@ def edgebench_phase1_summary(
 
     paired: dict[str, Any] = {}
     for base_arm, arm in SAT_CONTRASTS:
+        if base_arm not in loaded and arm not in loaded:
+            continue
         base_items = loaded.get(base_arm) or []
         arm_items = loaded.get(arm) or []
         differences = []
@@ -205,6 +224,7 @@ def edgebench_phase1_summary(
             "A1/A2 use parallel_loops; A3-A5 use adaptive_search with allocation disabled.",
             "A3 is the adaptive verifier-shadow control; A3 - A2 includes the orchestration switch and is not a score gain.",
             "A4 - A3 isolates steering, A5 - A4 isolates the fixed protocol, and A5 - A1 is the total effect.",
+            "N1 - N0v isolates audit production, N2 - N1 isolates pull delivery, N2 - N0v is the total audit effect, and N3 - N2 isolates closure.",
             "Paired contrasts align campaigns by list order (r1/r2/r3) for each arm.",
             "SAT totals are summed across the arm's campaigns.",
         ],
@@ -222,8 +242,8 @@ def render_phase1_markdown(summary: Mapping[str, Any]) -> str:
         "",
         "## Arms",
         "",
-        "| Arm | Campaigns | Score mean | Score SD | Raw mean | Completion | SAT verifier | Steering applied | Cache records | Peer reads | Collaboration |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| Arm | Campaigns | Score mean | Score SD | Raw mean | Completion | SAT verifier | Steering applied | Cache records | Peer reads | Collaboration | Audit briefs | Credentials verified |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for arm, item in (summary.get("arms") or {}).items():
         sat = item.get("sat_totals") or {}
@@ -234,7 +254,9 @@ def render_phase1_markdown(summary: Mapping[str, Any]) -> str:
             f"{sat.get('verifier_records', 0)} | {sat.get('steering_applied', 0)} | "
             f"{sat.get('shared_cache_records', 0)} | "
             f"{sat.get('global_evidence_peer_reads', 0)} | "
-            f"{sat.get('collaboration_events', 0)} |"
+            f"{sat.get('collaboration_events', 0)} | "
+            f"{sat.get('audit_briefs', 0)} | "
+            f"{sat.get('audit_credentials_verified', 0)} |"
         )
     lines.extend(
         [

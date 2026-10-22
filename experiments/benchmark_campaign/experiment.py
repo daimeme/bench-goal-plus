@@ -758,6 +758,14 @@ def collect_cell(campaign: dict[str, Any], cell: dict[str, Any]) -> dict[str, An
     record["sat_k_consistent"] = record["sat_k"]["consistent"]
     for key, value in (sat.get("metrics") or {}).items():
         record[f"sat_{key}"] = value
+    for key in (
+        "audit_status",
+        "audit_delivery_rate",
+        "audit_acceptance_rate",
+        "audit_verified_rate",
+        "audit_defect_kinds",
+    ):
+        record[f"sat_{key}"] = sat.get(key)
     selection = _selection_summary(manifest, record)
     record["selection"] = selection
     for key, value in selection.items():
@@ -1087,17 +1095,39 @@ def paired_condition_effects(
 
 
 def paired_sat_ablation(records: list[dict[str, Any]]) -> dict[str, Any]:
-    """Pair the SAT ladder incrementally: A2-A1, A3-A2, A4-A3, A5-A4."""
+    """Pair the available SAT/A and N audit ladders incrementally."""
 
-    chain = (("A1", "A2"), ("A2", "A3"), ("A3", "A4"), ("A4", "A5"))
-    return {
-        "baseline": "A1",
-        "arms": {
-            f"{arm} - {baseline}": _paired_condition_effect(
+    present = {str(record.get("condition")) for record in records}
+    chains: list[tuple[str, tuple[tuple[str, str], ...]]] = []
+    if present & {"A1", "A2", "A3", "A4", "A5"}:
+        chains.append(
+            (
+                "A1",
+                (("A1", "A2"), ("A2", "A3"), ("A3", "A4"), ("A4", "A5")),
+            )
+        )
+    if present & {"N0v", "N1", "N2", "N3"}:
+        chains.append(
+            (
+                "N0v",
+                (
+                    ("N0v", "N1"),
+                    ("N1", "N2"),
+                    ("N2", "N3"),
+                    ("N0v", "N2"),
+                ),
+            )
+        )
+    arms: dict[str, Any] = {}
+    for _baseline, chain in chains:
+        for baseline, arm in chain:
+            arms[f"{arm} - {baseline}"] = _paired_condition_effect(
                 records, baseline=baseline, condition=arm
             )
-            for baseline, arm in chain
-        },
+    return {
+        "baselines": [baseline for baseline, _chain in chains],
+        "baseline": chains[0][0] if chains else None,
+        "arms": arms,
     }
 
 
@@ -1188,12 +1218,13 @@ def render_markdown(summary: dict[str, Any]) -> str:
     )
     sat = summary.get("sat_ablation") or {}
     if sat.get("arms"):
-        lines.extend(["", "## SAT-GP A1 ablation", ""])
+        lines.extend(["", "## SAT mechanism ablation", ""])
         lines.append(
             "| Arm | Paired cells | Mean directional gain | Verifier records | "
-            "Cache records | Steering applied | Peer Evidence reads | Collaboration events |"
+            "Cache records | Steering applied | Peer Evidence reads | Collaboration events | "
+            "Audit briefs | Credentials verified |"
         )
-        lines.append("|---|---:|---:|---:|---:|---:|---:|---:|")
+        lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
         for item in sat["arms"].values():
             effect = item.get("mean_minus_baseline_directional_gain")
             metrics = (item.get("arm_sat") or {}).get("metrics") or {}
@@ -1205,19 +1236,22 @@ def render_markdown(summary: dict[str, Any]) -> str:
                 f"{metrics.get('shared_cache_records', 0)} | "
                 f"{metrics.get('steering_applied', 0)} | "
                 f"{metrics.get('global_evidence_peer_reads', 0)} | "
-                f"{metrics.get('collaboration_events', 0)} |"
+                f"{metrics.get('collaboration_events', 0)} | "
+                f"{metrics.get('audit_briefs', 0)} | "
+                f"{metrics.get('audit_credentials_verified', 0)} |"
             )
         lines.append(
-            "A1 is the Goal Plus search baseline; the ladder is paired incrementally "
-            "(A2-A1, A3-A2, A4-A3, A5-A4). Mechanism counts come from persisted "
-            "Goal Plus verifier, steering, Evidence-read, and collaboration artifacts. "
-            "A missing collaboration ledger is reported as absent, never as "
-            "zero-success."
+            "A1/N0v are the Goal Plus baselines; A arms are paired A2-A1, A3-A2, "
+            "A4-A3, A5-A4 and N arms are N1-N0v, N2-N1, N3-N2, N2-N0v. Mechanism "
+            "counts come from persisted verifier, steering, Evidence-read, "
+            "collaboration, and audit brief/credential artifacts. A missing ledger "
+            "is reported as absent, never as zero-success."
         )
         k_mismatch = [
             record
             for record in summary.get("records") or []
-            if record.get("condition") in {"A1", "A2", "A3", "A4", "A5"}
+            if record.get("condition")
+            in {"A1", "A2", "A3", "A4", "A5", "N0", "N0v", "N1", "N2", "N3"}
             and record.get("sat_k_consistent") is False
         ]
         if k_mismatch:
