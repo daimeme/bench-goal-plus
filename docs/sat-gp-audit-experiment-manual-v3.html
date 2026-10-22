@@ -185,7 +185,7 @@ details p,details ul{color:#52627a;margin:8px 0 0}
   </div>
 
   <div class="callout cyan">
-    <strong>设计起点：</strong>最早的想法很直接——让 <strong>LLM Verifier 承担 SAT 的 audit</strong>，让 <strong>Steering 承担 SAT 的 repair</strong>。两者都是 Goal-Plus 已有的平面，不需要新角色或 peer 通道。实现后发现 Steering 的 push/文本策略不适合异步 verifier；于是保留“verifier 审计、候选修复”的分工，替换了审计内容、投递方式和闭环证据，最终收敛为下面的四平面。
+    <strong>一句话逻辑：</strong>SAT 的审计需要独立证据，修复需要候选自己改 artifact。因此 <strong>LLM Verifier 负责 audit，Candidate 负责 repair</strong>；Steering 只能承担“把诊断送到候选”的投递层，不能代替修复。诊断天然异步、候选会结束 turn，所以要拉取；送达不等于修复，所以 N3 加回执和 credential。
   </div>
 
   <div class="callout green">
@@ -240,40 +240,107 @@ details p,details ul{color:#52627a;margin:8px 0 0}
 </section>
 
 <section class="section" id="design">
-  <h2>二、迁移方案：从 verifier/steering 分工到四个平面</h2>
-  <p class="lead">先说设计起点，再说为什么改。迁移不是从“四个平面”开始的，而是从一个很自然的双角色映射开始，随后被 Goal-Plus 的异步 verifier、候选生命周期和 hard-evidence 边界逐步修正。</p>
+  <h2>二、方案逻辑：从审计信号到可验证修复</h2>
+  <p class="lead">这套设计只做一件事：把候选自己看不见的盲点，变成一条可执行、可验证的修复线索。下面用几个“为什么”解释每个部件为什么必须存在，而不是介绍它经历了哪些版本。</p>
 
-  <h3>2.1 设计起点：把 SAT 的审计和修复接到已有平面</h3>
-  <p>SAT 的协作可以拆成两个最小职责：<strong>audit</strong>（对主张提出反例、缺口和下一步检查）与 <strong>repair</strong>（按审计结果改变候选行为）。Goal-Plus 已经有两个看似对应的平面：</p>
+  <h3>2.1 为什么需要一次独立审计？</h3>
+  <p>hard verifier 只回答“过没过”，不回答“为什么没过、下一步查什么”。候选自己检查自己，又会漏掉自己的盲点。SAT 的经验也说明：候选池里有更好的解，不等于最终会被选中；覆盖率与正确率是两件事。因此需要一个独立于候选的审计者，把“缺什么证据”变成下一步动作。</p>
+  <div class="flow">
+    <div class="flow-node"><span class="phase">01 CANDIDATE</span><strong>有 artifact</strong><small>但看不到自己的盲点</small></div>
+    <div class="flow-node"><span class="phase">02 HARD VERIFIER</span><strong>pass / fail</strong><small>只说结果，不说原因</small></div>
+    <div class="flow-node"><span class="phase">03 LLM VERIFIER</span><strong>why / next</strong><small>读 task reference、diff、hard evidence，提出 claim/defect</small></div>
+    <div class="flow-node"><span class="phase">04 BRIEF</span><strong>可执行下一步</strong><small>不是新分数，是“查什么/修什么”</small></div>
+    <div class="flow-node"><span class="phase">05 NEXT ATTEMPT</span><strong>新的 artifact</strong><small>由候选决定是否采纳</small></div>
+  </div>
+  <div class="callout cyan">
+    <strong>关键区别：</strong>审计不是“再打一个分”。评分回答“有多好”，审计回答“哪个证据缺口让这个结论不可靠，下一步怎么补”。
+  </div>
+
+  <h3>2.2 为什么审计由 verifier 做、修复由 candidate 做？</h3>
+  <p>因为这是两个不同的职责，不能合并：</p>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>SAT 职责</th><th>最初选择的 Goal-Plus owner</th><th>预期承担的工作</th><th>为什么先选它</th></tr></thead>
+      <thead><tr><th>职责</th><th>需要什么</th><th>应该由谁做</th><th>如果把两者合并会怎样</th></tr></thead>
       <tbody>
-        <tr><td><strong>critic / audit</strong></td><td><strong>LLM Verifier</strong></td><td>提出 claim、定位 defect、给出下一步检查</td><td>已经在 settlement 后独立评估，天然接近“critic”；不需要候选互相对话</td></tr>
-        <tr><td><strong>explorer / repair</strong></td><td><strong>Steering</strong></td><td>把修复动作送到候选，促使它改变下一次尝试</td><td>已经有 candidate-visible 投递、attempt ledger 和 apply/shadow 概念</td></tr>
+        <tr><td><strong>audit</strong></td><td>独立性、证据、对 task reference 的理解</td><td>LLM Verifier</td><td>候选自审会漏掉自己的盲点，也容易把“我想做的”当成“已证明的”</td></tr>
+        <tr><td><strong>repair</strong></td><td>edit surface、artifact ownership、下一轮尝试</td><td>Candidate</td><td>Verifier 直接改 artifact 会污染评估边界；verifier 不应该同时当裁判和选手</td></tr>
+        <tr><td><strong>delivery</strong></td><td>在正确时机把诊断送到候选</td><td>Steering / pull brief</td><td>把“发送”当成“修复”，会得到 delivered 很高但 artifact 没变的假象</td></tr>
       </tbody>
     </table>
   </div>
-  <p>这个映射的价值是：<strong>不新增角色、不新增 peer 消息通道、不改变 hard Evidence</strong>，只用 Goal-Plus 已有的两个平面承接 SAT 的两个职责。它也是本方案最容易被理解的起点。</p>
+  <div class="flow">
+    <div class="flow-node"><span class="phase">AUDIT</span><strong>Verifier</strong><small>独立提出 claim / defect / next check</small></div>
+    <div class="flow-node"><span class="phase">MESSAGE</span><strong>Brief</strong><small>有界、可读、只给候选自己的审计</small></div>
+    <div class="flow-node"><span class="phase">REPAIR</span><strong>Candidate</strong><small>在自己的 edit surface 内决定改不改</small></div>
+    <div class="flow-node"><span class="phase">EVIDENCE</span><strong>Hard verifier</strong><small>对新的 artifact 重新给出 hard 结果</small></div>
+    <div class="flow-node"><span class="phase">SELECTION</span><strong>Unchanged</strong><small>Selection 仍只看既有 hard/quality 规则</small></div>
+  </div>
+  <p>所以 Steering 可以承担“把消息送到候选”这一层，但不能承担“修复”本身；修复动作只能由 candidate 做。这个分工也是为什么 brief 是 advisory，而不是可执行补丁。</p>
 
-  <h3>2.2 为什么原分工不能直接上线</h3>
-  <p>把“verifier 审计、steering 修复”直接接起来后，四个约束同时暴露。它们不是实现细节，而是决定了最终架构：</p>
+  <h3>2.3 为什么还需要 broker 和 pull？</h3>
+  <p>因为“有一个审计结论”与“候选能在正确时机看到它”是两个独立问题，需要两个独立部件。</p>
+  <div class="grid">
+    <div class="card span-6">
+      <div class="num">CONTENT BOUNDARY</div>
+      <h3>Broker：把模型输出变成可投递合同</h3>
+      <p>模型可以写很长、很散，也可以一次说很多缺陷。Broker 把它压成一条 claim、最多两个 defect、一个 repair，并计算稳定 identity；同一 record 重复处理是幂等的。它不调用第二个模型，也不读取 peer 私有推理。</p>
+    </div>
+    <div class="card span-6">
+      <div class="num">TIME BOUNDARY</div>
+      <h3>Pull：让候选在自己的生命周期里取</h3>
+      <p>Verifier 是异步 FIFO；审计产出时，源 settlement 可能已过期，候选也可能已经 <code>end_turn</code>。如果强行 push，消息会卡在“有发送窗口才有资格送达”的条件上。持久化 + 拉取把时间解耦。</p>
+    </div>
+  </div>
+
+  <pre><code>settlement ──&gt; verifier queue ──&gt; audit ready
+candidate turn ──&gt; end_turn
+                         ↑ push 窗口常常已经关闭
+candidate next tool call ──&gt; pull ──&gt; brief
+</code></pre>
+
+  <p>所以不是“为了异步而异步”，而是：<strong>审计天然晚于结算，候选天然可能在结算后结束 turn；拉取是唯一不引入 host wait loop 的送达方式。</strong></p>
+
+  <h3>2.4 为什么“送达”还不够，需要回执和 credential？</h3>
+  <p>从“审计产生”到“答案变好”之间有五道门。每一道门都需要不同的证据；少了任何一道，后面的结论都不成立。</p>
+  <div class="flow">
+    <div class="flow-node"><span class="phase">GATE 1</span><strong>produced</strong><small>brief 真的生成了吗？</small></div>
+    <div class="flow-node"><span class="phase">GATE 2</span><strong>delivered</strong><small>候选的工具响应里真的出现了吗？</small></div>
+    <div class="flow-node"><span class="phase">GATE 3</span><strong>accepted</strong><small>候选说采纳、忽略还是反驳？</small></div>
+    <div class="flow-node"><span class="phase">GATE 4</span><strong>repaired</strong><small>artifact 真的变了吗？</small></div>
+    <div class="flow-node"><span class="phase">GATE 5</span><strong>improved</strong><small>新的 hard score 真的更好吗？</small></div>
+  </div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>原设想</th><th>实际约束</th><th>设计响应</th></tr></thead>
+      <thead><tr><th>如果只看到这一步</th><th>容易得到的错误结论</th><th>还缺什么证据</th></tr></thead>
       <tbody>
-        <tr><td>verifier 产出诊断后，像 steering 一样 push 给候选</td><td>verifier 是异步 FIFO；等它产出时源 settlement 往往已过期，候选也可能已 <code>end_turn</code>；steering 的发送窗口依赖 active call/source age</td><td><strong>改为持久化 + 拉取</strong>：候选在下一次 <code>run_verifier</code>/<code>get_agent_context</code> 取 brief</td></tr>
-        <tr><td>steering 的 repair 文案可以直接用于 VLIW</td><td>旧 steering 主要消费 diagnostic text score 和 <code>peer_reconciliation</code>，既没有 VLIW 机器模型，也不是 hard fact</td><td><strong>重做审计内容</strong>：VerifierAudit + task reference + VLIW hard-fact producer</td></tr>
-        <tr><td>steering 发送成功就说明 repair 发生</td><td>attempt ledger 证明“发过/返回过”，不证明候选改了 artifact，也不证明 hard score 改善</td><td><strong>增加候选回执 + credential</strong>：accepted/ignored/rebutted，后续 hard evidence 判 verified/rejected</td></tr>
-        <tr><td>只比较“有 audit / 无 audit”就能证明审计有效</td><td>N0v 和 N1 的 verifier 调用次数不同，直接比较会把“多一次 LLM 调用”算进审计收益</td><td><strong>拆成 N0v/N1/N2/N3</strong>：compute-matched 后分别估计生产、投递、闭环</td></tr>
+        <tr><td>brief 已生成</td><td>“审计有效”</td><td>是否送达、是否被理解、是否改变行为</td></tr>
+        <tr><td>brief 已送达</td><td>“候选已采纳”</td><td>候选回执；工具返回不等于模型读了</td></tr>
+        <tr><td>候选 accepted</td><td>“已经修复”</td><td>artifact hash 是否变化；口头采纳不等于行动</td></tr>
+        <tr><td>artifact 已变化</td><td>“答案变好”</td><td>新的 hard score/正确性；变化可能是无关甚至有害的</td></tr>
       </tbody>
     </table>
   </div>
-  <p>因此最终方案不是推翻“verifier 审计、候选修复”，而是<strong>保留职责分工，替换三件事</strong>：审计内容（从通用 steering 文案变成 verifier audit + VLIW facts）、投递方式（从 push 变成 pull）、闭环证据（从 attempt ledger 变成 candidate response + credential）。</p>
+  <p>N3 的 response + credential 就是为后三道门准备的：accepted/ignored/rebutted 记录候选决定，后续 hard settlement 比较 before/after artifact 与 score，写入 verified/rejected。credential 仍然只证明 hard-evidence 层的改善，不证明具体 defect 的语义被完全修复。</p>
 
-  <h3>2.3 收敛后的四个平面</h3>
-  <p>最终系统分为 producer、composition、delivery、closure 四个平面。每个平面只拥有自己的事实和状态转换，这样 N0–N3 才能分别归因。</p>
+  <h3>2.5 为什么实验要拆成 N0v/N1/N2/N3？</h3>
+  <p>如果只比较“有审计 / 无审计”，会把三件事混在一起：多一次 verifier 调用的算力、brief 是否送达、候选是否真的修复。拆组就是为了让每一段只改变一个因果环节。</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>组</th><th>在上一组基础上增加什么</th><th>回答的问题</th></tr></thead>
+      <tbody>
+        <tr><td><strong>N0v</strong></td><td>有 verifier，但没有 brief 通道</td><td>吸收“多一次 verifier 调用”的算力影响</td></tr>
+        <tr><td><strong>N1</strong></td><td>增加审计生产，但不投递</td><td>审计能否产出可定位的缺陷？</td></tr>
+        <tr><td><strong>N2</strong></td><td>增加拉取投递</td><td>送达是否改变候选行为并改善答案？</td></tr>
+        <tr><td><strong>N3</strong></td><td>增加候选回执和 credential</td><td>回执闭环是否进一步提高修复、降低 harm？</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout amber">
+    <strong>为什么不能只跑 N1/N2：</strong>N0v 是 compute-matched 控制。没有它，N1−N0 的差异既可能来自审计，也可能来自“多调用了一次 LLM”。N0–N3 的完整对照见第五节。
+  </div>
 
+  <h3>2.6 四个平面与审计内容</h3>
+  <p>把上面的逻辑落到实现，就是四个平面。每个平面只拥有自己的事实，N0–N3 才能分别归因。</p>
   <div class="flow">
     <div class="flow-node"><span class="phase">01 PRODUCER</span><strong>Verifier diagnosis</strong><small>LLM Verifier 输出 VerifierAudit；VLIW producer 叠加 hard facts</small></div>
     <div class="flow-node"><span class="phase">02 COMPOSITION</span><strong>AuditBroker</strong><small>确定性合成 claim / ≤2 defects / repair，生成 AuditBrief</small></div>
@@ -282,24 +349,8 @@ details p,details ul{color:#52627a;margin:8px 0 0}
     <div class="flow-node"><span class="phase">05 CLOSURE</span><strong>Response + credential</strong><small>N3 回执 accepted/ignored/rebutted；后续 hard evidence 判 verified/rejected</small></div>
   </div>
 
-  <h3>2.4 关键设计决策</h3>
-  <p>下面这些选择看起来像实现偏好，实际上都是前面约束的直接结果。读这张表可以快速理解“为什么不是另一种更简单的做法”。</p>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>决策</th><th>更简单的替代</th><th>为什么不选</th><th>代价 / 后果</th></tr></thead>
-      <tbody>
-        <tr><td>用 verifier + steering 两个已有平面</td><td>新增 SAT 固定角色或 peer 通道</td><td>违反候选隔离；需要新的 host 通道和生命周期</td><td>必须把 steering 的 transport 与 repair 职责拆开</td></tr>
-        <tr><td>确定性 broker 合成 brief</td><td>让第二个模型写审计摘要</td><td>增加成本与方差；同一 record 难幂等；容易引入 peer 推理</td><td>brief 内容受 claim/defect 上限约束，解释力依赖 producer</td></tr>
-        <tr><td>拉取式投递</td><td>沿用 steering push</td><td>verifier 异步、候选会 end_turn、source 会过期</td><td>候选必须再次调用工具才会看到 brief</td></tr>
-        <tr><td>候选回执，而不是 verifier 自动修复</td><td>让 verifier 直接改 candidate artifact</td><td>verifier 不拥有 edit surface；会混淆评估与修复；hard Evidence 被污染</td><td>N3 需要额外工具和 credential 状态机</td></tr>
-        <tr><td>N0v/N1/N2/N3 四组</td><td>只跑 audit on/off</td><td>无法区分生产、投递、闭环；也无法吸收 verifier 算力</td><td>实验成本更高，但每个对比可解释</td></tr>
-        <tr><td>task reference 进入 verifier</td><td>只看 diff 和 metrics</td><td>无法判断 VLIW 语义、shape 泛化和评分合同</td><td>freeze 时必须固定并 hash 任务文件</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <h3>2.5 Producer：审计内容</h3>
-  <p>Verifier 在评分之外返回一个有界 <code>VerifierAudit</code>：一个 falsifiable claim、最多 2 个 located defects、一个 repairable action。VLIW 额外叠加确定性事实：</p>
+  <h4 style="margin:22px 0 8px;font-size:15px">VLIW 审计看什么</h4>
+  <p>Verifier 除评分外返回一个有界 <code>VerifierAudit</code>：一个 falsifiable claim、最多 2 个 located defects、一个 repairable action。VLIW 还叠加四类确定性事实：</p>
   <div class="table-wrap">
     <table>
       <thead><tr><th>事实来源</th><th>defect</th><th>含义</th></tr></thead>
@@ -313,17 +364,23 @@ details p,details ul{color:#52627a;margin:8px 0 0}
   </div>
   <p class="small">隐藏 case 和 slot/register 上限尚未进入 verifier；它们属于 controller 侧后验判定，不在候选可见上下文中出现。</p>
 
-  <h3>2.6 Composition：为什么 broker 不调用模型</h3>
-  <p>Broker 只读终态 <code>VerifierRecord</code>，做确定性合成、identity、状态和过期。这样做的原因不是节省 token，而是保证“同一条 <code>record</code> 只产生一条 brief、重复投递幂等、审计不读取 peer 私有推理”。</p>
-
-  <h3>2.7 Delivery：为什么是拉取</h3>
-  <p>Verifier 是异步队列，等审计产出时源 settlement 往往已过期；候选也经常在结算后 <code>end_turn</code>。因此 brief 不在 verifier 消费时 push，而是持久化后由候选在下一次 <code>run_verifier</code> 或 <code>get_agent_context</code> 拉取。读取即标记 <code>delivered</code>，不重发。</p>
-
-  <h3>2.8 Closure：N3 只增加“回执”，不增加新目标</h3>
-  <p>N3 在 apply 之上增加 <code>audit_closure=true</code>。候选用 <code>goal_plus_search_respond_audit_brief</code> 回答 accepted / ignored / rebutted；accepted 创建一个 queued credential，下一次同一 candidate 的硬结算比较 before/after hard score 和 artifact hash，写入 verified 或 rejected。credential 是审计闭环证据，不是新的评分或 promotion 规则。</p>
+  <h3>2.7 设计决策速查：为什么不选更简单的做法</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>决策</th><th>更简单的替代</th><th>为什么不选</th><th>代价 / 后果</th></tr></thead>
+      <tbody>
+        <tr><td>用 verifier + candidate 分工</td><td>新增 SAT 固定角色或 peer 通道</td><td>违反候选隔离；需要新的 host 通道和生命周期</td><td>必须把 steering 的 transport 与 repair 职责拆开</td></tr>
+        <tr><td>确定性 broker 合成 brief</td><td>让第二个模型写审计摘要</td><td>增加成本与方差；同一 record 难幂等；容易引入 peer 推理</td><td>brief 内容受 claim/defect 上限约束，解释力依赖 producer</td></tr>
+        <tr><td>拉取式投递</td><td>沿用 steering push</td><td>verifier 异步、候选会 end_turn、source 会过期</td><td>候选必须再次调用工具才会看到 brief</td></tr>
+        <tr><td>候选回执，而不是 verifier 自动修复</td><td>让 verifier 直接改 candidate artifact</td><td>verifier 不拥有 edit surface；会混淆评估与修复；hard Evidence 被污染</td><td>N3 需要额外工具和 credential 状态机</td></tr>
+        <tr><td>N0v/N1/N2/N3 四组</td><td>只跑 audit on/off</td><td>无法区分生产、投递、闭环；也无法吸收 verifier 算力</td><td>实验成本更高，但每个对比可解释</td></tr>
+        <tr><td>task reference 进入 verifier</td><td>只看 diff 和 metrics</td><td>无法判断 VLIW 语义、shape 泛化和评分合同</td><td>freeze 时必须固定并 hash 任务文件</td></tr>
+      </tbody>
+    </table>
+  </div>
 
   <div class="callout cyan">
-    <strong>一句话：</strong>SAT 迁移到 Goal-Plus 的不是“团队”，而是“审计—修复”的可观测回路；不是“让候选互相对话”，而是“让 verifier 的诊断以有界、可回执、可验证的方式到达候选”。
+    <strong>一句话逻辑：</strong>hard verifier 只说“过没过”；候选看不见自己的盲点；所以需要独立审计。审计不能改候选，所以 verifier 产诊断、候选做修复。诊断异步且候选会 end_turn，所以拉取。送达不等于修复，所以回执 + credential。N0–N3 分别验证这四步。
   </div>
 </section>
 
