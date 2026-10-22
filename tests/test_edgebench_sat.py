@@ -85,7 +85,7 @@ class EdgeBenchSatTest(unittest.TestCase):
             )
 
     def test_audit_n_profiles_and_presets(self) -> None:
-        for mode in ("n0", "n0v", "n1", "n2"):
+        for mode in ("n0", "n0v", "n1", "n2", "n3"):
             _, profile = load_profile(
                 f"vliw-audit-{mode}-pi-deepseek-v4-flash-2h-k4-c1"
             )

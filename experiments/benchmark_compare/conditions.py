@@ -130,10 +130,7 @@ CONDITIONS: dict[ConditionId, Condition] = {
     ),
     "N3": Condition(
         "N3", "goal-plus-pi", True, False, False, False, False, True,
-        None, None, False,
-        "N3 requires rebuttal and RepairCredential closure, which is not "
-        "wired yet; use N2 until the closure path exists.",
-        "n3", None,
+        None, None, True, None, "n3", None
     ),
 }
 

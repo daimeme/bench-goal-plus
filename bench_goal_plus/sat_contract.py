@@ -84,11 +84,6 @@ def require_sat_controller_experiment(goal_plus_root: Path, mode: str) -> None:
 
     if mode not in SAT_EXPERIMENT_MODES:
         raise ValueError(f"unsupported SAT experiment mode: {mode!r}")
-    if mode == "n3":
-        raise RuntimeError(
-            "N3 requires rebuttal and RepairCredential closure, which is not "
-            "implemented yet; use N2."
-        )
     overlay = (
         goal_plus_root
         / "src"

@@ -1285,7 +1285,7 @@
     },
     {
       "id": "local-vliw-audit-matrix-2h",
-      "description": "Audit N0v/N1/N2 (Goal Plus + Pi) local VLIW matrix in one campaign: matched deepseek-v4-flash medium, T=2h, K=4, C=1, R=1.",
+      "description": "Audit N0v/N1/N2/N3 (Goal Plus + Pi) local VLIW matrix in one campaign: matched deepseek-v4-flash medium, T=2h, K=4, C=1, R=1.",
       "benchmarks": [
         "local-vliw"
       ],
@@ -1299,7 +1299,8 @@
       "conditions": [
         "N0v",
         "N1",
-        "N2"
+        "N2",
+        "N3"
       ],
       "campaign_id_template": "local-vliw-audit-matrix-2h-k4-c1-r1-{timestamp}",
       "expected_profile": {
@@ -1310,7 +1311,8 @@
         "conditions": [
           "N0v",
           "N1",
-          "N2"
+          "N2",
+          "N3"
         ],
         "model": "deepseek-v4-flash",
         "reasoning_effort": "medium",
@@ -1559,6 +1561,73 @@
         "concurrency": 4,
         "cell_concurrency": 1,
         "worker_runtime_seconds": 1500
+      }
+    },
+    {
+      "id": "local-vliw-audit-n3-2h",
+      "description": "Audit N3 local VLIW: Goal Plus + Pi closure, deepseek-v4-flash medium, T=2h, K=4, C=1, R=1.",
+      "benchmarks": [
+        "local-vliw"
+      ],
+      "profile": "benchmarks/profiles/vliw-audit/vliw-audit-n3-2h-deepseek-v4-flash-medium.json",
+      "conditions": [
+        "N3"
+      ],
+      "campaign_id_template": "local-vliw-audit-n3-2h-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": [
+          "goal-plus-pi"
+        ],
+        "conditions": [
+          "N3"
+        ],
+        "model": "deepseek-v4-flash",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1,
+        "worker_runtime_seconds": 6600
+      }
+    },
+    {
+      "id": "edgebench-vliw-audit-n3-pi-2h",
+      "description": "VLIW audit arm N3 with Goal Plus + Pi provider, closure, deepseek/deepseek-v4-flash, T=7200, K=4, C=1, R=1.",
+      "benchmarks": [
+        "edgebench"
+      ],
+      "profile": "vliw-audit-n3-pi-deepseek-v4-flash-2h-k4-c1",
+      "campaign_id_template": "edgebench-vliw-audit-n3-pi-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": [
+          "goal-plus-pi-provider"
+        ],
+        "model": "deepseek/deepseek-v4-flash",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1
+      }
+    },
+    {
+      "id": "edgebench-vliw-audit-n3-codex-2h",
+      "description": "VLIW audit arm N3 with Goal Plus + Codex, closure, gpt-5.6-sol, T=7200, K=4, C=1, R=1.",
+      "benchmarks": [
+        "edgebench"
+      ],
+      "profile": "vliw-audit-n3-codex-gpt-5-6-sol-2h-k4-c1",
+      "campaign_id_template": "edgebench-vliw-audit-n3-codex-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": [
+          "goal-plus-codex"
+        ],
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1
       }
     }
   ]

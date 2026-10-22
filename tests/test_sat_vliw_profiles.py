@@ -116,6 +116,7 @@ class SatVliwProfileTest(unittest.TestCase):
             ("n0v", "N0v"),
             ("n1", "N1"),
             ("n2", "N2"),
+            ("n3", "N3"),
         ):
             spec = self.agent.resolve_spec(
                 preset_id=f"local-vliw-audit-{mode}-2h"
@@ -147,18 +148,20 @@ class SatVliwProfileTest(unittest.TestCase):
         self.assertEqual(edge["experiment_mode"], "n1")
         self.assertEqual(edge["global_evidence_mode"], "independent")
 
-    def test_n3_is_explicitly_blocked_on_closure(self) -> None:
-        self.assertFalse(CONDITIONS["N3"].implemented)
-        with self.assertRaises(ValueError):
+    def test_n3_closure_preset_is_available(self) -> None:
+        self.assertTrue(CONDITIONS["N3"].implemented)
+        self.assertEqual(
             resolve_condition(
                 method="goal-plus-pi", concurrency=4, condition_id="N3"
-            )
-        with self.assertRaises(RuntimeError):
-            require_sat_controller_experiment(ROOT, "n3")
+            ).sat_experiment_mode,
+            "n3",
+        )
+        spec = self.agent.resolve_spec(preset_id="local-vliw-audit-n3-2h")
+        self.assertEqual(spec.conditions, ("N3",))
 
     def test_audit_matrix_and_pilot_presets(self) -> None:
         matrix = self.agent.resolve_spec(preset_id="local-vliw-audit-matrix-2h")
-        self.assertEqual(matrix.conditions, ("N0v", "N1", "N2"))
+        self.assertEqual(matrix.conditions, ("N0v", "N1", "N2", "N3"))
         pilot = self.agent.resolve_spec(preset_id="local-vliw-audit-pilot-30m")
         self.assertEqual(pilot.conditions, ("N0v", "N1", "N2"))
         self.assertEqual(pilot.concurrency()["T"], 1800)

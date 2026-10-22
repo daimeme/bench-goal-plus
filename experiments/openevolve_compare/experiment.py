@@ -1037,7 +1037,7 @@ def render_goal(
         )
     sat_text = ""
     if sat_experiment_mode and sat_experiment_mode in {
-        "n0", "n0v", "n1", "n2",
+        "n0", "n0v", "n1", "n2", "n3",
     }:
         sat_text = (
             f"- Audit arm `{sat_experiment_mode.upper()}` is frozen by the host "

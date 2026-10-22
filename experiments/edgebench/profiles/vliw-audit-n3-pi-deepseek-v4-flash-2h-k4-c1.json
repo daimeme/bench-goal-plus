@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "id": "vliw-audit-n3-pi-deepseek-v4-flash-2h-k4-c1",
+  "description": "VLIW audit arm N3: Goal Plus + Pi provider, closure, deepseek/deepseek-v4-flash, T=7200, K=4, C=1, R=1.",
+  "protocol_source": "edgebench-official-codex",
+  "backend": "docker",
+  "dataset_repository": "ByteDance-Seed/EdgeBench",
+  "dataset_revision": "47846a4c3669ad447e0ea984833b0d352460c5f9",
+  "registry": "seededge",
+  "task_ids": [
+    "vliw_kernel_optimization"
+  ],
+  "methods": [
+    "goal-plus-pi-provider"
+  ],
+  "model": "deepseek/deepseek-v4-flash",
+  "pi_package_version": "0.83.0",
+  "experiment_mode": "n3",
+  "global_evidence_mode": "independent",
+  "shared_dir_enabled": false,
+  "supplemental_evaluation_enabled": false,
+  "reasoning_effort": "medium",
+  "wall_time_seconds": 7200,
+  "concurrency": 4,
+  "worker_runtime_seconds": 6600,
+  "goal_plus_verifier_timeout_seconds": 120,
+  "goal_plus_finalization_grace_seconds": 300,
+  "cell_concurrency": 1,
+  "judge_concurrency": 1,
+  "judge_port": 8080,
+  "protocol_overrides": {
+    "eval_interval": 300,
+    "internet": false
+  },
+  "protocol_override_reasons": {
+    "agent": "method=goal-plus-pi-provider selects SForge agent=pi-goal-plus-provider",
+    "attempts_per_task": "R=1 uses one outer Goal Plus trajectory and maps K=4 to internal workers",
+    "backend": "resolved campaign backend=docker",
+    "cell_concurrency": "C=1 controls concurrent task cells",
+    "judge_concurrency": "judge_concurrency=1 caps official Judge execution",
+    "model": "resolved campaign model=deepseek/deepseek-v4-flash",
+    "reasoning_effort": "resolved reasoning_effort=medium",
+    "timeout": "T=7200 seconds per task trajectory or Search run",
+    "eval_interval": "effective hidden-Judge eval_interval=300 seconds",
+    "internet": "effective internet=false from profile override"
+  }
+}
