@@ -146,6 +146,7 @@ def materialize_workspace(source_root: Path, workspace: Path) -> dict[str, Any]:
             CONTROLLER_PATH,
             source_root,
             PRIMARY_METRIC,
+            include_controller_evidence=True,
         )
     )
     (workspace / ".gitignore").write_text(
@@ -261,6 +262,31 @@ def evaluate_workspace(
     score = raw.get("score_cycles")
     valid = bool(raw.get("all_correct")) and isinstance(score, (int, float))
     cycles = int(score) if valid else INVALID_CYCLES
+    raw_cases = raw.get("results")
+    case_cycles = []
+    if isinstance(raw_cases, list):
+        for case in raw_cases[:32]:
+            if not isinstance(case, dict):
+                continue
+            case_score = case.get("cycles")
+            if not isinstance(case_score, (int, float)) or isinstance(case_score, bool):
+                continue
+            case_cycles.append(
+                {
+                    "name": str(case.get("name", ""))[:80],
+                    "kind": str(case.get("kind", "correctness"))[:32],
+                    "correct": bool(case.get("correct")),
+                    "cycles": int(case_score),
+                }
+            )
+    controller_evidence = {
+        "all_correct": raw.get("all_correct"),
+        "best_cycles": raw.get("best_cycles"),
+        "score_cycles": raw.get("score_cycles"),
+        "case_count": len(raw_cases) if isinstance(raw_cases, list) else 0,
+        "failed_cases": [case for case in case_cycles if not case["correct"]][:8],
+        "case_cycles": case_cycles,
+    }
     report = {
         "schema_version": 1,
         "benchmark": "local-vliw-replica",
@@ -277,6 +303,7 @@ def evaluate_workspace(
             BASELINE_CYCLES / cycles if valid and cycles > 0 else 0.0
         ),
         "raw_report": raw,
+        "controller_evidence": controller_evidence,
         "diagnostics": diagnostics,
         "artifact_sha256": (
             sha256_file(workspace / ARTIFACT_NAME)

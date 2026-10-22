@@ -64,6 +64,8 @@ class SatVliwProfileTest(unittest.TestCase):
             '"runner.py", "verifier.py")',
             source,
         )
+        self.assertIn("include_controller_evidence=True", source)
+        self.assertIn('"controller_evidence": controller_evidence', source)
         self.assertEqual(
             SAT_TASK_REFERENCE_ENV, "GOAL_PLUS_CONTROLLER_TASK_REFERENCE"
         )
