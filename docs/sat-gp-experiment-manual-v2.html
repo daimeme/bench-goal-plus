@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Goal Plus × SAT 结构化协作有效性实验手册 v2：EdgeBench VLIW 单任务、A1–A5 固定协议消融、pilot 与正式实验门禁。">
-<title>Goal Plus × SAT 结构化协作有效性实验手册 v2</title>
+<meta name="description" content="Goal Plus × SAT 结构化协作有效性实验手册 v2.1：EdgeBench VLIW 单任务、A1–A5 固定协议消融、Pi/Codex 双变体、pilot 与正式实验门禁。">
+<title>Goal Plus × SAT 结构化协作有效性实验手册 v2.1</title>
 <style>
 :root{
   --ink:#142033; --muted:#5f6f86; --paper:#ffffff; --bg:#f4f7fb; --line:#dbe3ee;
@@ -123,13 +123,13 @@ details p,details ul{color:#52627a;margin:8px 0 0}
 <header class="hero">
   <div class="wrap">
     <div class="eyebrow">Goal Plus × SAT · Structured Collaboration Study</div>
-    <h1>结构化协作有效性实验手册 v2</h1>
-    <p>在 EdgeBench VLIW 单任务上，验证 Goal-Plus + Pi 固定的 SAT-GP 协议是否带来可观测的硬收益，并把收益拆成共享、识别、干预和协议四个机会点。</p>
+    <h1>结构化协作有效性实验手册 v2.1</h1>
+    <p>在 EdgeBench VLIW 单任务上，验证 Goal-Plus + Pi 或 Codex 固定的 SAT-GP 协议是否带来可观测的硬收益，并把收益拆成共享、识别、干预和协议四个机会点。</p>
     <div class="meta">
-      <span class="chip">v2.0 · 2026-10</span>
+      <span class="chip">v2.1 · 2026-10-22</span>
       <span class="chip">EdgeBench VLIW · 官方 Judge</span>
-      <span class="chip">deepseek-v4-flash · medium</span>
-      <span class="chip">Pi harness</span>
+      <span class="chip">Pi · deepseek-v4-flash</span>
+      <span class="chip">Codex · gpt-5.6-sol · medium</span>
       <span class="chip">K=4 · C=1 · T=2h</span>
       <span class="chip">R=3 正式 / R=3 pilot</span>
       <span class="chip">A1–A5 固定协议消融</span>
@@ -140,6 +140,7 @@ details p,details ul{color:#52627a;margin:8px 0 0}
 <div class="topbar">
   <div class="wrap nav">
     <a href="#verdict">结论</a>
+    <a href="#status">现状</a>
     <a href="#scope">边界</a>
     <a href="#mapping">映射</a>
     <a href="#arms">实验组</a>
@@ -158,11 +159,11 @@ details p,details ul{color:#52627a;margin:8px 0 0}
 
 <section class="section" id="verdict">
   <h2>一页结论</h2>
-  <p class="lead">本实验不完整复现 SAT。它要回答一个更窄、更可执行的问题：<strong>Goal-Plus + Pi 已有的并发候选、LLM verifier、steering 和固定 SAT-GP 协议，能否在 VLIW 任务上产生可归因的硬收益。</strong></p>
+  <p class="lead">本实验不完整复现 SAT。它要回答一个更窄、更可执行的问题：<strong>Goal-Plus + Pi（deepseek-v4-flash）或 Goal-Plus + Codex（gpt-5.6-sol）已有的并发候选、LLM verifier、steering 和固定 SAT-GP 协议，能否在 VLIW 任务上产生可归因的硬收益。</strong></p>
   <div class="grid">
     <div class="card span-3"><div class="num">Goal</div><h3>验证有效性</h3><p>固定结构化协作是否优于 K=4 并行搜索基线，并定位收益来自哪个机制。</p></div>
     <div class="card span-3"><div class="num">Primary</div><h3>硬分数 + 机制</h3><p>主终点是 EdgeBench VLIW 官方 Judge 分数；机制指标解释收益从哪里来。</p></div>
-    <div class="card span-3"><div class="num">Scope</div><h3>单任务、单模型</h3><p>只跑 <code>vliw_kernel_optimization</code>，不跑 50 题；团队为同构模型，异构性不在本轮。</p></div>
+    <div class="card span-3"><div class="num">Scope</div><h3>单任务、单变体</h3><p>只跑 <code>vliw_kernel_optimization</code>，不跑 50 题；Pi 和 Codex 是两个独立变体，各自固定模型，不混合比较。</p></div>
     <div class="card span-3"><div class="num">Decision</div><h3>先 pilot 再正式</h3><p>先用短预算确认 headroom、方差和机制是否发生，再投入 2h × R=3 的正式矩阵。</p></div>
   </div>
 
@@ -176,6 +177,57 @@ details p,details ul{color:#52627a;margin:8px 0 0}
     <div class="flow-node"><span class="phase">PHASE 03</span><strong>策略判断</strong><small>diagnostic input<br>steering policy</small></div>
     <div class="flow-node"><span class="phase">PHASE 04</span><strong>干预发送</strong><small>shadow / apply<br>delivery receipt</small></div>
     <div class="flow-node"><span class="phase">PHASE 05</span><strong>修复与选择</strong><small>hard verifier<br>selection / promotion</small></div>
+  </div>
+</section>
+
+<section class="section" id="status">
+  <h2>当前实验状态与已确认修正</h2>
+  <p class="lead">这一节记录 2026-10-22 的本地 pilot 事实和 A5 阻塞，目的是防止把“跑出了低分”误读成“协议有效”。当前结论是<strong>探索性</strong>的，不是 A1–A5 的因果结论。</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Arm</th><th>T</th><th>最终 cycles</th><th>可用性 / 解释</th></tr></thead>
+      <tbody>
+        <tr><td><strong>A1</strong></td><td class="num">1800</td><td class="num">1478 / 1533 / 1536</td><td>3/3；均值 1515.7，SD 32.5，当前最稳定基线</td></tr>
+        <tr><td><strong>A2</strong></td><td class="num">1800</td><td class="num">1513 / 1385 / 1555</td><td>3/3；均值 1484.3，SD 86.2；A2−A1 符号翻转，不能宣称共享有效</td></tr>
+        <tr><td><strong>A3</strong></td><td class="num">1800</td><td class="num">1729 / 1374 / 1449*</td><td>r1/r2 可用；r3 因 0 个 completed worker verifier 为 partial，1449 不计入</td></tr>
+        <tr><td><strong>A5</strong></td><td class="num">7200</td><td class="num">run_0001: 1725<br>run_0003: 1373</td><td>同一 cell 有 2 个 Search run；最终 1373；不能与 30m A1–A3 直接比较</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grid" style="margin-top:16px">
+    <div class="card span-6">
+      <h3>当前能支持的判断</h3>
+      <ul>
+        <li>VLIW 任务 headroom 很大：seed 147734 → 1.37k–1.73k。</li>
+        <li>观察到一个约 <strong>1.37k 的低模式</strong>；A5 1373、A3 r2 1374、A2 r2 1385 都到达过，A1 最低 1478；样本仅 2–3 次，不能当作稳定效应。</li>
+        <li>A5 1373 与 A3 r2 1374 基本持平；没有证据表明 A5 协议更好。</li>
+        <li>A5 输出 token 218k，高于 A1/A2/A3 的 46k–148k；2h 预算也更长。</li>
+      </ul>
+    </div>
+    <div class="card span-6">
+      <h3>不能支持的判断</h3>
+      <ul>
+        <li>A2 共享、A3 verifier shadow、A5 SAT-GP v2 的硬收益。</li>
+        <li>A5 的 1373 来自 steering 或 collaboration；当前两者都没有发生。</li>
+        <li>A5 的 selection loss 352 是真实问题；它是跨 run 聚合产物，最新 run 已选中 1373。</li>
+        <li>A3−A2 或 A4−A2 的因果归因；orchestration 和 steering 仍然混杂。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout amber">
+    <strong>A5 steering 当前没有发生，先修执行链，不要重设计阈值。</strong>
+    第一，<code>SatCollaborativeRepairParameters</code> 缺少 <code>history_limit</code>，而 <code>SteeringDiagnostics.evaluate()</code> 读取该字段，A5 在写 diagnostic 之前就抛 <code>policy_or_execution_error</code>，所以 A5 有 completed verifier records 但 0 个 steering diagnostics/attempts。第二，<code>.bench-runtime/*</code> 被误算成 candidate changed files，触发 <code>changed_outside_allowed</code>，steering 随后移除 <code>diff</code>；A3 的 diagnostics 已经因为 <code>private_evidence</code> 没有 action。修复这两处后重跑，才有资格判断 verifier 审计和 steering 策略是否需要优化。
+  </div>
+
+  <div class="callout cyan">
+    <strong>测量口径修正：</strong>当前 <code>campaign-summary.json</code> 的 <code>verifier_completed=0</code> 是字段口径 bug；按 <code>verifier/records/</code> 实际计数，A5 有 10 个 completed、A3 r1/r2 分别 2/3 个、A3 r3 为 0。A5 的 <code>selection_loss=352</code> 也是 run_0001 的 selected c001（1725）与 run_0003 的 best c003（1373）混合产生的，不应引用。A1 r3 的 <code>coverage=false</code>、<code>candidate_count=1</code> 需要先查 telemetry，不宜直接用于 coverage 汇总。
+  </div>
+
+  <div class="callout violet">
+    <strong>下一步的硬约束：</strong>先修复 steering 执行链，再用<strong>同一 T</strong>重跑。A1–A3 用 2h 重跑，或 A5 用 30m 重跑；不能继续拿 2h A5 对比 30m pilot。A5 还要拆成 <code>single Search</code> 与 <code>restart from promoted baseline</code> 两个可解释 treatment；collaboration ledger 仍然属于 Phase 2。
   </div>
 </section>
 
@@ -222,7 +274,7 @@ details p,details ul{color:#52627a;margin:8px 0 0}
         <tr><td>可学习策略库（每域 10 个）</td><td>固定 <code>sat_collaborative_repair/v1</code> + 5 个修复动作</td><td><span class="tag protocol">不做</span> 这是人工 policy，不是学习到的策略库；Phase 3 再做</td></tr>
         <tr><td>阶段序列 P1–P5</td><td><code>independent → peer_audit → repair → final_audit → final</code></td><td><span class="tag detect">形式映射</span> 阶段语义成立，但 ledger 记录待 Phase 2 补齐</td></tr>
         <tr><td>凭证审计选择</td><td>硬分数 selection；LLM verifier 只做信号</td><td><span class="tag p2">Phase 2</span> 本轮不做 certificate-based selection</td></tr>
-        <tr><td>异构模型团队</td><td>同构 <code>deepseek-v4-flash</code> × K=4</td><td><span class="tag p2">范围外</span> 本轮不测模型多样性</td></tr>
+        <tr><td>异构模型团队</td><td>每个变体内同构：Pi × <code>deepseek-v4-flash</code>，或 Codex × <code>gpt-5.6-sol</code>；K=4</td><td><span class="tag p2">范围外</span> 本轮不测模型多样性；两个变体也不混成一个团队</td></tr>
         <tr><td>coverage / routing oracle</td><td>候选池最优 vs 选中；best-of-K oracle</td><td><span class="tag base">必须补</span> 这是区分“协作产生新解”与“多跑几个”的关键</td></tr>
         <tr><td>数学/物理/知识问答</td><td>VLIW 内核优化（cycles）</td><td><span class="tag p2">域外</span> 不能直接外推；作为新域探索</td></tr>
       </tbody>
@@ -235,7 +287,7 @@ details p,details ul{color:#52627a;margin:8px 0 0}
 
 <section class="section" id="arms">
   <h2>四、实验组 A1–A5</h2>
-  <p class="lead">所有组固定同一 VLIW 任务、官方 Judge、模型 <code>deepseek-v4-flash</code>（Pi 调用）、T、K、C 和 evaluator 合同。A1–A5 只改变控制器冻结的协作层。</p>
+  <p class="lead">每个变体固定同一 VLIW 任务、官方 Judge、模型、T、K、C 和 evaluator 合同。当前有两个独立变体：Pi + <code>deepseek-v4-flash</code>，以及 Codex + <code>gpt-5.6-sol</code>（medium）。A1–A5 只改变控制器冻结的协作层；<strong>Pi 与 Codex 的结果不能混合比较</strong>。</p>
   <div class="table-wrap">
     <table>
       <thead><tr><th>组</th><th>overlay</th><th>LLM verifier</th><th>steering</th><th>shared cache</th><th>global evidence</th><th>本轮用途</th></tr></thead>
@@ -256,7 +308,7 @@ details p,details ul{color:#52627a;margin:8px 0 0}
     <div class="card span-4"><h3>A2 · shared evidence</h3><p>shared cache 打开，候选可显式读取 peer Evidence；verifier/steering 关闭。测“共享是否减少重复”。</p></div>
     <div class="card span-4"><h3>A3 · adaptive control + verifier shadow</h3><p><code>adaptive_search</code> 且 <code>allocation=None</code>；LLM verifier 记录 claim 和 text scores，steering 只诊断不发送。主要终点是 verifier 精度/召回，不是分数。</p></div>
     <div class="card span-4"><h3>A4 · GP async steering</h3><p>在 A3 的 adaptive 控制基础上真正发送 steering，记录 attempt、delivery、observation，并测 repair lift。</p></div>
-    <div class="card span-4"><h3>A5 · SAT-GP v2</h3><p>固定角色、阶段边界、SAT repair policy。Phase 1 只看硬分数和 steering/repair；certificate 指标 Phase 2。</p></div>
+    <div class="card span-4"><h3>A5 · SAT-GP v2</h3><p>固定角色、阶段边界、SAT repair policy。Phase 1 只看硬分数和 steering/repair；certificate 指标 Phase 2。当前 A5 steering 执行链有阻塞，见“当前实验状态”，修复前不能把 1373 当作 A5 协议收益。</p></div>
     <div class="card span-4"><h3>为什么没有 A0？</h3><p>本轮先验证 K=4 条件下的机制增量；单 Agent 和同预算线性化基线在 Phase 2 扩展，避免第一轮成本过高。</p></div>
   </div>
 
@@ -314,6 +366,13 @@ details p,details ul{color:#52627a;margin:8px 0 0}
     </div>
   </div>
 
+  <div class="callout violet">
+    <strong>两套独立 EdgeBench preset：</strong>
+    Pi 变体是 <code>edgebench-vliw-sat-a1-2h</code> … <code>a5</code>（<code>goal-plus-pi-provider</code>，<code>deepseek/deepseek-v4-flash</code>）；
+    Codex 变体是 <code>edgebench-vliw-sat-a1-codex-2h</code> … <code>a5</code>（<code>goal-plus-codex</code>，<code>gpt-5.6-sol</code>，medium）。
+    两者都固定 T=7200、K=4、C=1，但使用不同 harness、模型和鉴权路径；一个变体的结论不能外推到另一个变体。
+  </div>
+
   <div class="callout amber">
     <strong>Headroom 风险：</strong>EdgeBench 论文的外部参考（非本实验模型）中，VLIW 在 12h、3 次运行下 mean 85.6、sample stddev 1.9，属于高分低方差任务。若 A1 的 K=4 在 2h 已经接近 ceiling，A2–A5 没有提升空间。正式跑之前必须先用 A1 pilot 检查分数分布、候选差异和 coverage。
   </div>
@@ -339,8 +398,8 @@ details p,details ul{color:#52627a;margin:8px 0 0}
     <table>
       <thead><tr><th>阶段</th><th>Benchmark</th><th>Arms</th><th>T / K / C / R</th><th>目的</th><th>门禁</th></tr></thead>
       <tbody>
-        <tr><td><strong>Phase 0</strong><br><span class="tag base">pilot</span></td><td>local-vliw 或 EdgeBench VLIW 短预算</td><td>A1, A2, A3</td><td>T=1800s；K=4；C=1；R=3 个短 campaign</td><td>估计方差、headroom、cache/verifier 是否发生</td><td>见 Gate 1</td></tr>
-        <tr><td><strong>Phase 1</strong><br><span class="tag protocol">formal</span></td><td>EdgeBench VLIW 官方 Judge</td><td>A1–A5</td><td>T=7200s；K=4；C=1；R=3 campaigns</td><td>验证固定协议硬收益与机制归因</td><td>见 Gate 2</td></tr>
+        <tr><td><strong>Phase 0</strong><br><span class="tag base">pilot</span></td><td>local-vliw 或 EdgeBench VLIW 短预算</td><td>A1, A2, A3；A5 只能在与 A1–A3 相同 T 时加入</td><td>T=1800s；K=4；C=1；R=3 个短 campaign</td><td>估计方差、headroom、cache/verifier 是否发生</td><td>见 Gate 1</td></tr>
+        <tr><td><strong>Phase 1</strong><br><span class="tag protocol">formal</span></td><td>EdgeBench VLIW 官方 Judge</td><td>A1–A5；Pi 与 Codex 各自独立</td><td>T=7200s；K=4；C=1；R=3 campaigns</td><td>验证固定协议硬收益与机制归因</td><td>见 Gate 2</td></tr>
         <tr><td><strong>Phase 2</strong><br><span class="tag p2">audit</span></td><td>EdgeBench VLIW</td><td>A4/A5 扩展</td><td>沿用 Phase 1</td><td>补 collaboration ledger、repair certificate、verifier 精度抽检</td><td>Phase 1 出现修复信号</td></tr>
         <tr><td><strong>Phase 3</strong><br><span class="tag p2">library</span></td><td>独立实验</td><td>策略库学习</td><td>独立预算</td><td>反思→变异→跨题验证→冻结策略库</td><td>Phase 1 证明固定协议有效</td></tr>
       </tbody>
@@ -363,13 +422,18 @@ details p,details ul{color:#52627a;margin:8px 0 0}
         <li>A5 是否优于 A1？效应是否大于 pilot 估计的 MDE？</li>
         <li>A2 的共享是否减少重复探索？</li>
         <li>A4 的 steering 是否提高 repair rate，且不显著破坏正确候选？</li>
+        <li>A5 是否先产生 <code>steering-diagnostics</code> 和 attempt？若没有，先修执行链，不用 1373 作结论。</li>
         <li>A5 相对 A4 的协议增量是否值得额外成本？</li>
       </ul>
     </div>
   </div>
 
   <div class="callout amber">
-    <strong>落地提醒：</strong>Phase 0 pilot preset 已加入（<code>local-vliw-sat-pilot-30m</code>，A1–A3，T=1800，K=4，C=1）。Phase 0 用 3 个短 campaign 估计方差；Phase 1 需要 R=3 个独立 campaign。不要把 R=1 的 preset 直接当成正式矩阵。
+    <strong>落地提醒：</strong>Phase 0 pilot preset 已加入（<code>local-vliw-sat-pilot-30m</code>，A1–A3，T=1800，K=4，C=1）。Phase 0 用 3 个短 campaign 估计方差；Phase 1 需要 R=3 个独立 campaign。不要把 R=1 的 preset 直接当成正式矩阵。当前 A5 的 2h / 两个 Search run 记录<strong>不计入 Phase 0 对照</strong>，因为它和 A1–A3 的 30m 不匹配。
+  </div>
+
+  <div class="callout cyan">
+    <strong>Pi / Codex 要分开算：</strong>每个变体各自 15 个 Phase 1 campaign（5 arms × R=3）。不要用 Pi 的 A1–A3 去对比 Codex 的 A5，也不要把两个变体合成一个 arm 均值。Codex 变体需要额外的 Codex 鉴权与 Goal Plus MCP probe，不能复用 DeepSeek/Pi 的 provider 结论。
   </div>
 </section>
 
@@ -377,11 +441,11 @@ details p,details ul{color:#52627a;margin:8px 0 0}
   <h2>八、执行步骤</h2>
   <p class="lead">每一步都留下可复现证据；没有证据的阶段不能进入下一阶段。</p>
   <div class="steps">
-    <div class="step"><div><h3>冻结实验合同</h3><p>锁定 task、官方 Judge、模型、T/K/C/R、prompt、SAT 源 commit、overlay 版本和评测合同。所有 arm 使用同一合同。</p><div class="evidence">证据：profile、campaign manifest、SAT source commit、overlay mode</div></div></div>
-    <div class="step"><div><h3>环境与资产检查</h3><p>执行 setup/check/doctor；确认 VLIW work/judge 镜像、Docker、Judge 端口、SAT Goal Plus 源和 API 鉴权。</p><div class="evidence">证据：doctor 输出、image tag、asset inventory、SAT 源 preflight</div></div></div>
-    <div class="step"><div><h3>跑 Phase 0 pilot</h3><p>A1–A3，T=1800s，K=4，C=1，R=3 个短 campaign。只追求机制发生和方差估计，不追求最终结论。</p><div class="evidence">证据：3 组 cell manifest、score 分布、cache/verifier 记录</div></div></div>
+    <div class="step"><div><h3>冻结实验合同</h3><p>锁定 task、官方 Judge、harness/模型变体、T/K/C/R、prompt、SAT 源 commit、overlay 版本和评测合同。同一变体内的所有 arm 使用同一合同；Pi 与 Codex 不混用。</p><div class="evidence">证据：profile、campaign manifest、SAT source commit、overlay mode</div></div></div>
+    <div class="step"><div><h3>环境与资产检查</h3><p>执行 setup/check/doctor；确认 VLIW work/judge 镜像、Docker、Judge 端口、SAT Goal Plus 源和 API/Codex 鉴权。</p><div class="evidence">证据：doctor 输出、image tag、asset inventory、SAT 源 preflight</div></div></div>
+    <div class="step"><div><h3>跑 Phase 0 pilot</h3><p>A1–A3，T=1800s，K=4，C=1，R=3 个短 campaign。A5 只有在与 A1–A3 相同 T 时才加入；2h A5 不能做 30m pilot 的对照。</p><div class="evidence">证据：3 组 cell manifest、score 分布、cache/verifier 记录</div></div></div>
     <div class="step"><div><h3>过 headroom gate</h3><p>若 A1 分数接近 ceiling、候选无差异或方差远大于预期效应，停止正式矩阵，调整 T/任务/指标。</p><div class="evidence">证据：A1 分布、coverage、MDE 估计</div></div></div>
-    <div class="step"><div><h3>跑 Phase 1 正式矩阵</h3><p>A1–A5，T=7200s，K=4，C=1，R=3 个独立 campaign；EdgeBench VLIW 官方 Judge。每个 campaign 保留 raw cycles 和 official score。</p><div class="evidence">证据：15 个 run、Judge 结果、token/cost、机制计数</div></div></div>
+    <div class="step"><div><h3>跑 Phase 1 正式矩阵</h3><p>每个变体 A1–A5，T=7200s，K=4，C=1，R=3 个独立 campaign；EdgeBench VLIW 官方 Judge。Pi 和 Codex 各自 15 个 campaign，分开汇总。</p><div class="evidence">证据：每个变体 15 个 run、Judge 结果、token/cost、机制计数</div></div></div>
     <div class="step"><div><h3>计算 coverage / selection loss</h3><p>从 candidate 记录和 process verifier 计算候选池最优、选中、seed 的关系；给出 best-of-K oracle 对照。</p><div class="evidence">证据：coverage 表、selection loss 表、oracle 对照</div></div></div>
     <div class="step"><div><h3>计算 repair / 破坏率</h3><p>对每个 steering attempt，找下一次硬验证，判断是否改善、是否破坏之前正确候选；统计送达/过期/未闭环。</p><div class="evidence">证据：attempt→iteration linkage、repair lift、correct-destroyed rate</div></div></div>
     <div class="step"><div><h3>生成报告与决策</h3><p>按 arm 给出硬分数、机制指标、成本、CI；按 Gate 2 判断是否进入 Phase 2。负结果也要输出机会点图。</p><div class="evidence">证据：report.md、xlsx、campaign-summary.json、决策记录</div></div></div>
@@ -411,9 +475,9 @@ details p,details ul{color:#52627a;margin:8px 0 0}
 <section class="section" id="gates">
   <h2>十、成功标准与决策门</h2>
   <p class="lead">门禁是实验的一部分。未过门禁时，保留已跑证据，但不得进入下一阶段。</p>
-  <div class="gate"><div class="g-name">Gate 0<br>环境</div><div class="g-check">setup/check/doctor 通过；VLIW 镜像和 Judge 可用；SAT 源包含 controller overlay；API-only 网络策略生效。</div><div class="g-out">失败 → 只做本地 smoke，不跑正式</div></div>
-  <div class="gate"><div class="g-name">Gate 1<br>Pilot</div><div class="g-check">A1 有 headroom；A2 cache/peer read > 0；A3 verifier records > 0 且抽样精度可接受；方差允许检测预设 MDE。</div><div class="g-out">失败 → 调整 T/任务/verifier，停止 2h 矩阵</div></div>
-  <div class="gate"><div class="g-name">Gate 2<br>Formal</div><div class="g-check">A5−A1 的 official score 改善超过 MDE 且 CI 不含 0；机制计数与收益方向一致；correct-destroyed 未显著上升。</div><div class="g-out">通过 → Phase 2；不通过 → 输出负结果和机会点</div></div>
+  <div class="gate"><div class="g-name">Gate 0<br>环境</div><div class="g-check">setup/check/doctor 通过；VLIW 镜像和 Judge 可用；SAT 源包含 controller overlay；API-only 网络策略生效；Codex 变体还必须通过 Codex 鉴权和 Goal Plus MCP probe。</div><div class="g-out">失败 → 只做本地 smoke，不跑正式</div></div>
+  <div class="gate"><div class="g-name">Gate 1<br>Pilot</div><div class="g-check">A1 有 headroom；A2 cache/peer read > 0；A3 verifier completed records > 0 且抽样精度可接受；A5 若加入必须与 A1–A3 同 T；方差允许检测预设 MDE。</div><div class="g-out">失败 → 调整 T/任务/verifier，停止 2h 矩阵</div></div>
+  <div class="gate"><div class="g-name">Gate 2<br>Formal</div><div class="g-check">A5 先产生 steering-diagnostics 和 attempt；A5−A1 的 official score 改善超过 MDE 且 CI 不含 0；机制计数与收益方向一致；correct-destroyed 未显著上升。</div><div class="g-out">通过 → Phase 2；不通过 → 输出负结果和机会点</div></div>
   <div class="gate"><div class="g-name">Gate 3<br>Phase 2</div><div class="g-check">A4/A5 出现可观测 repair lift；collaboration ledger 可记录；verifier 精度可审计。</div><div class="g-out">失败 → 凭证审计降级为诊断，不作为主结论</div></div>
 
   <div class="callout cyan">
@@ -432,6 +496,10 @@ details p,details ul{color:#52627a;margin:8px 0 0}
         <tr><td><strong>同构模型</strong></td><td>没有模型多样性，不能测 SAT 异构团队</td><td>明确 scope 为同构团队；Phase 2/3 再加异构 arm</td></tr>
         <tr><td><strong>A3 被误读</strong></td><td>shadow 分数接近 A2，被写成“verifier 无效”</td><td>把 A3 主终点改为识别精度；分数只作 sanity check</td></tr>
         <tr><td><strong>A5 凭证缺失</strong></td><td>ledger 显示 absent</td><td>Phase 1 只宣称固定协议；Phase 2 补 certificate 记录</td></tr>
+        <tr><td><strong>A5 steering 未执行</strong></td><td>有 completed verifier records，但 0 diagnostics / 0 attempts</td><td>先修 <code>history_limit</code> 和 <code>.bench-runtime</code> 编辑面噪声；修复前不宣称 A5 steering 效果</td></tr>
+        <tr><td><strong>预算不匹配</strong></td><td>A5 2h/双 Search 对比 A1–A3 30m</td><td>同 T 重跑；A5 拆成 single Search 与 restart 两个 treatment</td></tr>
+        <tr><td><strong>verifier 队列不完整</strong></td><td>A3 r3 因 0 个 completed verifier 变 partial</td><td>先 drain/验证 verifier 完成；partial cell 不进入均值；报告覆盖缺口</td></tr>
+        <tr><td><strong>summary 口径错误</strong></td><td><code>verifier_completed=0</code>、A5 selection loss 跨 run 混合</td><td>以 <code>verifier/records/</code> 和单 Search run 为准；修指标后再导出</td></tr>
         <tr><td><strong>Docker/Judge</strong></td><td>镜像缺失、Judge 超时、端口冲突</td><td>先 setup/check/doctor；只 provision VLIW；保留 Judge ledger</td></tr>
         <tr><td><strong>协议 override</strong></td><td>T=2h 与官方 12h 不同，official comparable 可能为 false</td><td>报告明确标注 override；不写成官方榜单成绩</td></tr>
         <tr><td><strong>成本</strong></td><td>15 个 2h run + Judge 调用</td><td>先 pilot；优先 A1/A2/A4/A5，A3 可减 R；按 Gate 停止</td></tr>
@@ -443,7 +511,7 @@ details p,details ul{color:#52627a;margin:8px 0 0}
 
 <section class="section" id="wiring">
   <h2>十二、实现状态与接线清单</h2>
-  <p class="lead">A1–A5 已同时接通 common-matrix/local-vliw 和 EdgeBench native 路径：Phase 0 用本地短预算 pilot，Phase 1 用 EdgeBench VLIW 官方 Judge。</p>
+  <p class="lead">A1–A5 已同时接通 common-matrix/local-vliw 和 EdgeBench native 路径：Phase 0 用本地短预算 pilot，Phase 1 用 EdgeBench VLIW 官方 Judge。EdgeBench 同时提供 Pi + DeepSeek 和 Codex + GPT-5.6-sol 两套独立 preset。</p>
   <div class="grid">
     <div class="card span-6">
       <h3>已经具备</h3>
@@ -454,7 +522,9 @@ details p,details ul{color:#52627a;margin:8px 0 0}
         <li>coverage / selection loss / candidate spread 指标</li>
         <li><code>scripts/sat_verifier_audit.py</code>：verifier claim 导出、标注模板、precision 审计</li>
         <li><code>scripts/sat_phase0_summary.py</code>：跨 campaign 方差、配对 CI、MDE</li>
-        <li>EdgeBench VLIW <code>edgebench-vliw-sat-a1-2h</code> … <code>a5</code> profile/preset</li>
+        <li>EdgeBench VLIW <code>edgebench-vliw-sat-a1-2h</code> … <code>a5</code> profile/preset（Pi + deepseek-v4-flash）</li>
+        <li>EdgeBench VLIW <code>edgebench-vliw-sat-a1-codex-2h</code> … <code>a5</code> profile/preset（Codex + gpt-5.6-sol medium）</li>
+        <li><code>scripts/run_sat_a1_a5.sh</code>：Pi preset 的串行 A1–A5 启动、终态等待和 finish 重试</li>
         <li>EdgeBench SAT env、archive metrics、<code>sat_edgebench_summary.py</code></li>
         <li>SAT 源 preflight、MCP env 白名单、K 峰值报告</li>
         <li>external SAT 源：common <code>BENCH_GOAL_PLUS_SOURCE_DIR</code>；EdgeBench <code>SFORGE_GOAL_PLUS_SOURCE_DIR</code></li>
@@ -463,17 +533,17 @@ details p,details ul{color:#52627a;margin:8px 0 0}
     <div class="card span-6">
       <h3>EdgeBench VLIW 已接线</h3>
       <ul>
-        <li>profile 增加 <code>experiment_mode</code>，A1–A5 各一个 VLIW profile/preset</li>
+        <li>profile 增加 <code>experiment_mode</code>，Pi 和 Codex 各有 A1–A5 的 VLIW profile/preset</li>
         <li><code>preparation.py</code> 冻结 <code>global_evidence_mode</code>、SAT source 和 cell manifest</li>
         <li><code>runtime.py</code> 注入 <code>GOAL_PLUS_CONTROLLER_EXPERIMENT</code>、annotator disable</li>
         <li>EdgeBench archive 读取 verifier/steering/cache/evidence/collaboration 指标</li>
-        <li>跨 campaign 配对：<code>scripts/sat_edgebench_summary.py</code></li>
+        <li>跨 campaign 配对：<code>scripts/sat_edgebench_summary.py</code>；Pi/Codex 分开汇总</li>
       </ul>
     </div>
   </div>
 
   <div class="callout amber">
-    <strong>SAT 源：</strong>使用 SAT 分支 <code>d182adb</code>（包含 A2 verifier-off 修复和 SAT steering adaptive_search overlay 修复）。EdgeBench 容器通过 <code>SFORGE_GOAL_PLUS_SOURCE_DIR</code> 复制该源；本地 common-matrix 通过 <code>BENCH_GOAL_PLUS_SOURCE_DIR</code> 选择。Phase 1 的完整 Linux 步骤见 <code>docs/sat-phase1-runbook.md</code>。
+    <strong>SAT 源与 A5 阻塞：</strong>已跑的 pilot 使用 SAT 分支 <code>d182adb</code>（包含 A2 verifier-off 修复和 SAT steering adaptive_search overlay 修复）。EdgeBench 容器通过 <code>SFORGE_GOAL_PLUS_SOURCE_DIR</code> 复制该源；本地 common-matrix 通过 <code>BENCH_GOAL_PLUS_SOURCE_DIR</code> 选择。该提交<strong>尚未包含</strong> A5 的 <code>history_limit</code> 修复和 <code>.bench-runtime</code> 编辑面修复；在包含这两项修复的新 commit 重跑之前，不能把 A5 的 1373 当作 SAT-GP 协议收益。Phase 1 的完整 Linux 步骤见 <code>docs/sat-phase1-runbook.md</code>。
   </div>
 
   <h3 style="margin-top:22px">参考命令</h3>
@@ -543,6 +613,20 @@ python3 scripts/bench.py launch \
   --preset edgebench-vliw-sat-a1-2h \
   --campaign-id edgebench-vliw-sat-a1-r1
 
+# 4b) Codex + gpt-5.6-sol 变体（与 Pi 变体分开汇总）
+export SFORGE_GOAL_PLUS_SOURCE_DIR=/path/to/muyuan/plugins/goal-plus
+export SFORGE_GOAL_PLUS_EXPECTED_REF=d182adb
+
+python3 scripts/bench.py check --preset edgebench-vliw-sat-a1-codex-2h
+python3 scripts/bench.py setup --preset edgebench-vliw-sat-a1-codex-2h
+python3 scripts/bench.py plan  --preset edgebench-vliw-sat-a1-codex-2h
+
+for arm in a1 a2 a3 a4 a5; do
+  python3 scripts/bench.py launch \
+    --preset "edgebench-vliw-sat-${arm}-codex-2h" \
+    --campaign-id "edgebench-vliw-sat-${arm}-codex-r1"
+done
+
 # finish 后跨 campaign 汇总
 # python3 scripts/sat_edgebench_summary.py --campaign A1=runs/edgebench/... ...
 </code></pre>
@@ -553,7 +637,9 @@ python3 scripts/bench.py launch \
     <span class="pill"><b>overlay</b> experiments/benchmark_compare/sat.py</span>
     <span class="pill"><b>campaign</b> experiments/benchmark_campaign/experiment.py</span>
     <span class="pill"><b>SAT metrics</b> bench_goal_plus/goal_plus_evidence.py</span>
-    <span class="pill"><b>presets</b> benchmarks/runners.json</span>
+    <span class="pill"><b>presets</b> benchmarks/runners.json（Pi + Codex）</span>
+    <span class="pill"><b>Phase 1</b> docs/sat-phase1-runbook.md</span>
+    <span class="pill"><b>A1–A5 script</b> scripts/run_sat_a1_a5.sh（Pi）</span>
     <span class="pill"><b>EdgeBench</b> experiments/edgebench/controller/</span>
   </div>
 </section>
@@ -581,6 +667,17 @@ python3 scripts/bench.py launch \
         <li>凭证审计、学习策略库明确放到 Phase 2/3。</li>
       </ul>
     </div>
+    <div class="card span-12">
+      <h3>v2 → v2.1 的主要变化</h3>
+      <ul>
+        <li>新增 Codex + <code>gpt-5.6-sol</code>（medium）A1–A5 EdgeBench preset；Pi 和 Codex 作为两个独立变体，禁止混合比较。</li>
+        <li>明确 A5 必须与 A1–A3 使用同一 T；当前 2h A5 / 30m pilot 不是 matched comparison。</li>
+        <li>记录 A5 steering 执行链阻塞：<code>history_limit</code> 缺失导致 0 diagnostics；<code>.bench-runtime</code> 编辑面噪声导致 <code>diff</code> 被移除、A3 出现 <code>private_evidence</code>。</li>
+        <li>记录本地 pilot 现状：A1 稳定约 1.48–1.54k；A5 1373 与 A3 r2 1374 基本持平；A5 的 1373 来自第二个 Search run，不能直接归因于协议。</li>
+        <li>修正测量口径：<code>verifier_completed</code> 按 <code>verifier/records/</code> 计；A5 selection loss 不跨 run 混算；partial cell 不进入均值。</li>
+        <li>新增 Gate 2 前置条件：A5 必须先有 steering-diagnostics 和 attempt，才讨论分数收益。</li>
+      </ul>
+    </div>
   </div>
 
   <details open>
@@ -603,11 +700,11 @@ python3 scripts/bench.py launch \
 
 <footer class="footer">
   <div class="wrap row">
-    <span>Goal Plus × SAT 结构化协作有效性实验手册 v2 · 2026-10</span>
-    <span>范围：EdgeBench VLIW 单任务 · A1–A5 固定协议消融 · 不完整复现 SAT</span>
+    <span>Goal Plus × SAT 结构化协作有效性实验手册 v2.1 · 2026-10-22</span>
+    <span>范围：EdgeBench VLIW 单任务 · A1–A5 固定协议消融 · Pi/Codex 双变体 · 不完整复现 SAT</span>
   </div>
   <div class="wrap" style="margin-top:8px">
-    <span>本手册基于 v1 实验方案与 SAT 论文分析报告调整；结论口径、A3 定位、EdgeBench VLIW 单任务、pilot/R=3 门禁和机会点指标为 v2 的主要变化。</span>
+    <span>v2.1 相对 v2：补充 Pi/Codex 双变体、同 T 对照约束、A5 steering 执行链阻塞、verifier/selection 口径修正、本地 pilot 现状，以及 Codex + gpt-5.6-sol preset。</span>
   </div>
 </footer>
 </main>
