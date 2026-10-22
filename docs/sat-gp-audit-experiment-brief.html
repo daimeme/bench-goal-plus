@@ -1,0 +1,661 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="SAT 到 Goal-Plus 的审计迁移实验：目标、架构、SAT 对应关系、N0–N3 分组、实验步骤、测量指标与当前结果。">
+<title>SAT 审计迁移：实验方案与结果</title>
+<style>
+:root{
+  --ink:#142033; --muted:#5f6f86; --paper:#fff; --bg:#f4f7fb; --line:#dbe3ee;
+  --blue:#2563eb; --blue-soft:#eaf1ff; --cyan:#0e7490; --cyan-soft:#e6f7fa;
+  --violet:#6d28d9; --violet-soft:#f1eaff; --amber:#b45309; --amber-soft:#fff6e5;
+  --green:#15803d; --green-soft:#eaf8ee; --red:#be123c; --red-soft:#fff0f3;
+  --shadow:0 14px 34px rgba(20,32,51,.08);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:linear-gradient(180deg,#eef4fb 0,#f8fafc 36%,#f4f7fb 100%);color:var(--ink);font-family:Inter,"Noto Sans SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;line-height:1.68}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+.hero{padding:54px 0 34px;background:radial-gradient(circle at 88% 10%,rgba(37,99,235,.2),transparent 34%),linear-gradient(135deg,#0f1d35,#1d3b68 64%,#2563eb);color:#fff}
+.hero .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:#bfdbfe}
+.hero h1{max-width:980px;margin:14px 0 14px;font-size:clamp(30px,4.6vw,52px);line-height:1.12;letter-spacing:-.04em;font-weight:800}
+.hero p{max-width:920px;margin:0;color:#dbeafe;font-size:17px}
+.meta{display:flex;gap:9px;flex-wrap:wrap;margin-top:22px}
+.chip{display:inline-flex;align-items:center;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.10);border-radius:999px;padding:5px 11px;font-size:12px;color:#e8f2ff}
+.chip.warn{border-color:rgba(253,230,138,.55);background:rgba(180,83,9,.28);color:#fef3c7}
+.topbar{position:sticky;top:0;z-index:8;background:rgba(255,255,255,.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.nav{display:flex;gap:17px;overflow:auto;white-space:nowrap;min-height:54px;align-items:center;font-size:13px}
+.nav a{color:var(--muted)}
+.nav a:hover{color:var(--ink)}
+.section{padding:48px 0 4px}
+.section h2{font-size:29px;line-height:1.2;letter-spacing:-.02em;margin:0 0 10px}
+.section h3{font-size:19px;margin:26px 0 8px}
+.lead{max-width:960px;color:var(--muted);margin:0 0 20px}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:20px 21px}
+.span-4{grid-column:span 4}.span-6{grid-column:span 6}.span-12{grid-column:span 12}
+.card h3{margin:0 0 7px;font-size:17px}
+.card p{margin:0;color:#52627a}
+.card ul{margin:8px 0 0;padding-left:19px;color:#52627a}
+.card li{margin:3px 0}
+.card .num{font-size:12px;font-weight:800;color:var(--blue);letter-spacing:.08em;text-transform:uppercase;margin-bottom:7px}
+.callout{border-left:4px solid var(--blue);background:var(--blue-soft);padding:14px 17px;border-radius:0 12px 12px 0;color:#24427a;margin:18px 0}
+.callout strong{color:#153b91}
+.callout.amber{border-color:var(--amber);background:var(--amber-soft);color:#6b3a07}
+.callout.amber strong{color:#7c3e00}
+.callout.cyan{border-color:var(--cyan);background:var(--cyan-soft);color:#155e6b}
+.callout.cyan strong{color:#0b4f5a}
+.callout.violet{border-color:var(--violet);background:var(--violet-soft);color:#4c2a91}
+.callout.violet strong{color:#3b1d78}
+.callout.green{border-color:var(--green);background:var(--green-soft);color:#14532d}
+.callout.green strong{color:#14532d}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px;background:#fff;box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;min-width:820px;font-size:13.5px}
+th,td{text-align:left;padding:11px 12px;border-bottom:1px solid #e8eef6;vertical-align:top}
+th{background:#f6f9fd;color:#41516a;font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;font-weight:800}
+tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.tag{display:inline-block;border-radius:999px;padding:2px 8px;font-size:11.5px;font-weight:800;white-space:nowrap}
+.tag.base{background:#eef2f7;color:#475569}
+.tag.control{background:var(--cyan-soft);color:#0e7490}
+.tag.shadow{background:var(--violet-soft);color:#5b21b6}
+.tag.apply{background:#dbeafe;color:#1d4ed8}
+.tag.closure{background:var(--amber-soft);color:#9a4b00}
+.tag.pending{background:var(--amber-soft);color:#9a4b00}
+.tag.ok{background:var(--green-soft);color:#166534}
+.tag.none{background:var(--red-soft);color:#9f1239}
+.small{font-size:12.5px;color:var(--muted)}
+code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em;background:#eef2f8;border-radius:6px;padding:1px 5px;color:#243b63}
+
+/* architecture diagram */
+.arch{margin:20px 0 10px;display:grid;grid-template-columns:1fr 18px 1fr 18px 1fr 18px 1fr 18px 1.06fr;gap:8px;align-items:stretch}
+.arch-col{display:flex;flex-direction:column;gap:8px;min-width:0}
+.col-head{font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;color:#64748b;padding:2px 2px 4px}
+.arch-node{border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px 11px;box-shadow:0 4px 12px rgba(20,32,51,.04)}
+.arch-node b{display:block;font-size:12.5px;line-height:1.35}
+.arch-node small{display:block;margin-top:4px;color:var(--muted);font-size:11px;line-height:1.42}
+.arch-node.soft{background:#f8fafc}
+.arch-node.blue{border-color:#bfd3ff;background:#f4f7ff}
+.arch-node.cyan{border-color:#b9e6ee;background:#f1fbfd}
+.arch-node.violet{border-color:#d9c9fb;background:#faf7ff}
+.arch-node.amber{border-color:#f5d7a6;background:#fffbf2}
+.arch-node.green{border-color:#bfe6cb;background:#f5fcf7}
+.arch-node.red{border-color:#f5c2ce;background:#fff8fa}
+.arch-arrow{display:grid;place-items:center;color:#7c93b5;font-size:19px;font-weight:700}
+.down{text-align:center;color:#7c93b5;font-size:16px;line-height:1}
+.arch-note{border:1px dashed #cfd9e8;border-radius:10px;padding:7px 9px;color:#64748b;font-size:10.5px;line-height:1.45;background:#fbfcfe}
+.loop-bar{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:10px 0 4px;padding:10px 14px;border:1px dashed #b7c8e6;border-radius:12px;background:#f8fbff;color:#35527d;font-size:12.5px}
+.loop-bar b{color:#1e3a8a}
+.owner{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0 4px}
+.owner div{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff}
+.owner span{display:block;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;color:var(--muted)}
+.owner b{display:block;margin-top:3px;font-size:13px}
+.owner em{display:block;margin-top:2px;font-style:normal;font-size:11.5px;color:var(--muted)}
+.owner .audit{border-left:4px solid var(--violet)}
+.owner .delivery{border-left:4px solid var(--cyan)}
+.owner .repair{border-left:4px solid var(--amber)}
+.owner .judge{border-left:4px solid var(--green)}
+.callout.compact{padding:11px 14px;margin:14px 0}
+.callout p{margin:0 0 7px}
+.callout p:last-child{margin-bottom:0}
+
+/* steps */
+.steps{display:grid;gap:12px;counter-reset:step}
+.step{display:grid;grid-template-columns:46px 1fr;gap:14px;align-items:start}
+.step::before{counter-increment:step;content:counter(step);display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--blue);color:#fff;font-weight:800;box-shadow:0 0 0 5px var(--blue-soft)}
+.step h3{margin:0 0 3px;font-size:16px}
+.step p{margin:0;color:#52627a;font-size:13.5px}
+.step .evidence{font-size:12.5px;color:var(--cyan);margin-top:3px}
+.gate{display:grid;grid-template-columns:145px 1fr 188px;gap:12px;align-items:start;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;margin-bottom:9px}
+.gate .g-name{font-weight:800;font-size:13.5px}
+.gate .g-check{color:#52627a;font-size:13px}
+.gate .g-out{font-size:12.5px;color:var(--muted)}
+
+/* result */
+.status-banner{border:1px solid #f1d49c;background:linear-gradient(135deg,#fffaf0,#fff7e6);border-left:5px solid var(--amber);border-radius:0 16px 16px 0;padding:18px 20px;margin:16px 0 20px;box-shadow:var(--shadow)}
+.status-kicker{font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:#9a4b00}
+.status-title{font-size:20px;font-weight:800;margin:4px 0 6px;color:#6b3a07}
+.status-banner p{margin:0;color:#7c4a12;max-width:960px}
+.result-table-note{font-size:12px;color:var(--muted);margin:7px 2px 0}
+.result-empty{color:#9a4b00;font-weight:700}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kpi{padding:14px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.kpi b{display:block;font-size:22px;line-height:1.15;color:var(--blue)}
+.kpi span{display:block;font-size:12px;color:var(--muted);margin-top:3px}
+
+.footer{margin-top:46px;padding:22px 0 36px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
+.footer .row{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+
+@media (max-width:1000px){
+  .arch{grid-template-columns:1fr;gap:12px}
+  .arch-arrow{display:none}
+  .arch-col{border-bottom:1px dashed #d8e3f2;padding-bottom:10px}
+  .arch-col:last-child{border-bottom:0}
+  .owner{grid-template-columns:repeat(2,1fr)}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:900px){
+  .grid{grid-template-columns:repeat(6,1fr)}
+  .span-4,.span-6,.span-12{grid-column:span 6}
+  .gate{grid-template-columns:1fr}
+}
+@media (max-width:760px){
+  .owner{grid-template-columns:1fr}
+}
+@media (max-width:620px){
+  .wrap{padding:0 15px}
+  .hero{padding:36px 0 26px}
+  .grid{grid-template-columns:1fr}
+  .span-4,.span-6,.span-12{grid-column:span 1}
+  .kpis{grid-template-columns:1fr}
+}
+@media print{
+  .topbar{display:none}
+  .hero{background:none;color:#111;padding-top:18px}
+  .hero p,.chip{color:#333}
+  .card,.table-wrap,.status-banner{box-shadow:none}
+  .section{padding-top:26px}
+  a{color:inherit;text-decoration:none}
+}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">SAT → Goal-Plus · Audit–Repair Experiment</div>
+    <h1>SAT 审计迁移：实验方案与结果</h1>
+    <p>把 SAT 的“主张—审计—修复”迁移到 Goal-Plus 的隔离候选：LLM Verifier 负责审计，Steering 只负责投递，Candidate 负责修复，Hard verifier 与 Selection 保持裁判权。N0–N3 每级只增加一个因果环节，用来回答审计生产、投递和闭环各自带来多少增量。</p>
+    <div class="meta">
+      <span class="chip">实验方案 + 当前结果</span>
+      <span class="chip">EdgeBench VLIW · 官方 Judge</span>
+      <span class="chip">N0 / N0v / N1 / N2 / N3</span>
+      <span class="chip">T=2h · K=4 · C=1 · R=3</span>
+      <span class="chip">Pi / Codex 分开</span>
+      <span class="chip warn">正式数据尚未运行</span>
+    </div>
+  </div>
+</header>
+
+<div class="topbar">
+  <div class="wrap nav">
+    <a href="#goals">实验目标</a>
+    <a href="#architecture">方案架构</a>
+    <a href="#sat-map">SAT 对应</a>
+    <a href="#groups">实验分组</a>
+    <a href="#steps">实验步骤</a>
+    <a href="#metrics">测量指标</a>
+    <a href="#results">结果</a>
+    <a href="#conclusion">结论边界</a>
+  </div>
+</div>
+
+<main class="wrap">
+
+<section class="section" id="goals">
+  <h2>一、实验目标</h2>
+  <p class="lead">本实验不试图复现 SAT 的固定团队或 peer 协作收益。它只回答一个更窄、可归因的问题：在 Goal-Plus 的隔离候选拓扑中，“独立审计 + 有界诊断 + 候选修复”这条回路，能否在 VLIW 任务上提高答案质量，并且增量可以拆到生产、投递和闭环三个环节。</p>
+
+  <div class="grid">
+    <div class="card span-4">
+      <div class="num">Goal 1 · Effect</div>
+      <h3>效果目标</h3>
+      <p>在 EdgeBench VLIW 官方 Judge 下，比较审计回路是否改善 official score、cycles 和 correctness，而不是只看“有没有发出 brief”。</p>
+    </div>
+    <div class="card span-4">
+      <div class="num">Goal 2 · Attribution</div>
+      <h3>归因目标</h3>
+      <p>把“多一次 verifier 调用”“审计是否送达”“候选是否真的修复”拆开，分别估计生产、投递、闭环的增量。</p>
+    </div>
+    <div class="card span-4">
+      <div class="num">Goal 3 · Boundary</div>
+      <h3>边界目标</h3>
+      <p>验证方案没有靠 peer 通道、没有让 verifier 改写 artifact、没有绕开 hard Evidence 或 Selection 来“制造提升”。</p>
+    </div>
+  </div>
+
+  <h3>研究问题与主对照</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>研究问题</th><th>主对照</th><th>主要看什么</th><th>不能回答什么</th></tr></thead>
+      <tbody>
+        <tr><td><strong>RQ1 审计生产</strong></td><td>N1 − N0v</td><td>audit precision、auditable rate、缺陷类型、briefs per record</td><td>不能说明投递有效；N1 只生产不投递</td></tr>
+        <tr><td><strong>RQ2 投递</strong></td><td>N2 − N1</td><td>official score、delivery rate、uptake、repair lift</td><td>不能说明闭环有效；N2 没有回执</td></tr>
+        <tr><td><strong>RQ3 闭环</strong></td><td>N3 − N2</td><td>verified rate、repair lift、harm、time-to-repair</td><td>不能说明 SAT 团队协作整体有效</td></tr>
+        <tr><td><strong>RQ4 成本与边界</strong></td><td>N0v − N0（可选）；N2/N3 成本</td><td>tokens、cost、verifier calls、latency、隔离与 hard Evidence 约束</td><td>不能把“多调用一次模型”的成本差当成审计效果</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>成功标准</h3>
+  <ul>
+    <li><strong>硬门槛：</strong>correctness 不出现系统性回退；official Judge 结果可复算；hidden case 只在最终判定使用。</li>
+    <li><strong>主效应：</strong>N2−N1 或 N3−N2 的 official score 按赛事方向改善，且配对 95% CI 支持；否则报告负结果，不更换主终点。</li>
+    <li><strong>机制证据：</strong>审计有产出、brief 可送达、候选有回执、artifact 有变化；任何一步缺失，都不能跳到“分数提升”。</li>
+    <li><strong>成本可接受：</strong>token、verifier 调用和延迟增量在预算内；否则即使分数提升，也要报告代价。</li>
+    <li><strong>可归因：</strong>每个对比只改变一个环节；Pi 与 Codex 分开汇总，不合并成一个大样本。</li>
+  </ul>
+
+  <div class="callout amber">
+    <strong>先机制，后分数：</strong>如果 delivery 或 uptake 没有发生，分数差异不能解释为“审计有效”。如果机制成立但分数无变化，结论是“审计没有转化为更好的答案”，而不是“实验失败”。
+  </div>
+</section>
+
+<section class="section" id="architecture">
+  <h2>二、新方案架构与 SAT 对应关系</h2>
+  <p class="lead">方案只保留 SAT 的“审计—修复”回路，不复制固定角色和 peer 通信。下图有四条所有权边界：<strong>Verifier 审计、Steering 投递、Candidate 修复、Hard verifier / Selection 裁判</strong>。理解这四条边界，就理解了整个迁移方案。</p>
+
+  <div class="arch">
+    <div class="arch-col">
+      <div class="col-head">01 输入与候选</div>
+      <div class="arch-node blue"><b>Task + FrozenSpec</b><small>目标、约束、评分合同在运行前冻结</small></div>
+      <div class="down">↓</div>
+      <div class="arch-node blue"><b>K 个隔离候选</b><small>各有自己的 edit surface；没有 peer 通道</small></div>
+      <div class="down">↓</div>
+      <div class="arch-node soft"><b>Artifact + hard 结果</b><small>候选提交的代码/配置，以及当前 correctness/cycles</small></div>
+    </div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-col">
+      <div class="col-head">02 独立审计</div>
+      <div class="arch-node green"><b>Hard verifier</b><small>correctness gate + cycles；只给 pass/fail 和数</small></div>
+      <div class="arch-node violet"><b>LLM Verifier</b><small>读 task reference、diff、hard facts；产出 claim + ≤2 defects + repair</small></div>
+      <div class="arch-note">Hard verifier 提供 hard facts；LLM Verifier 读 facts 后产出 audit。审计回答“为什么、下一步查什么”。</div>
+    </div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-col">
+      <div class="col-head">03 合成与持久化</div>
+      <div class="arch-node violet"><b>AuditBroker</b><small>去噪、限长、幂等；不调用第二个模型</small></div>
+      <div class="down">↓</div>
+      <div class="arch-node soft"><b>AuditBrief store</b><small>每条 record 一份有界 brief；状态可追踪</small></div>
+      <div class="arch-note">Broker 只合成 audit；hard score 直接进入 settlement，不经过 brief。Brief 是 advisory。</div>
+    </div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-col">
+      <div class="col-head">04 按需投递</div>
+      <div class="arch-node cyan"><b>Steering / pull</b><small>候选下一次工具调用时取；旧 push 关闭、不等待</small></div>
+      <div class="down">↓</div>
+      <div class="arch-node cyan"><b>Candidate reads brief</b><small>看到 claim、defect、repair 和 stop condition</small></div>
+      <div class="arch-note">Steering 只运输诊断，不替候选改 artifact。</div>
+    </div>
+    <div class="arch-arrow">→</div>
+    <div class="arch-col">
+      <div class="col-head">05 修复与硬闭环</div>
+      <div class="arch-node amber"><b>Candidate repairs</b><small>在自己的 edit surface 内改、忽略或反驳</small></div>
+      <div class="down">↓</div>
+      <div class="arch-node amber"><b>New artifact</b><small>重新进入 hard verifier；不是 verifier 直接改</small></div>
+      <div class="down">↓</div>
+      <div class="arch-node green"><b>Credential</b><small>后续 hard settlement 判 verified / rejected</small></div>
+      <div class="arch-note">Selection 仍只看 hard/quality，不被 brief 改写。</div>
+    </div>
+  </div>
+
+  <div class="loop-bar">
+    <span><b>闭环：</b>新 artifact 回到 Hard verifier，再进入下一轮审计或结算。</span>
+    <span><b>裁判不变：</b>brief 不改变 settlement、selection 或 promotion。</span>
+  </div>
+  <p class="small" style="margin:5px 2px 0">读法：从左到右是阶段推进，每列内部从上到下是阶段内步骤。Hard verifier 的 hard facts 同时供 LLM 审计和最终结算使用。</p>
+
+  <div class="owner">
+    <div class="audit"><span>Audit owner</span><b>LLM Verifier</b><em>独立证据与诊断</em></div>
+    <div class="delivery"><span>Delivery owner</span><b>Steering / pull</b><em>只负责送达；旧 push 关闭</em></div>
+    <div class="repair"><span>Repair owner</span><b>Candidate</b><em>拥有 edit surface</em></div>
+    <div class="judge"><span>Judge</span><b>Hard verifier + Selection</b><em>保持不可改写</em></div>
+  </div>
+
+  <div class="callout cyan">
+    <p><strong>为什么不让 verifier 直接修：</strong>verifier 没有候选的 edit surface；直接改 artifact 会把“审计”和“修复”混在一起，也会污染 hard Evidence 的评估边界。</p>
+    <p><strong>为什么用 pull 而不是 push：</strong>verifier 是异步的，候选可能在审计产出前已经结束 turn。持久化 + 拉取把时间解耦，不需要新增 host wait loop。</p>
+    <p><strong>为什么送达还不够：</strong>工具返回 brief 不等于候选读了，读了也不等于改了，改了也不等于分数更好。所以 N3 增加候选回执，并用后续 hard settlement 生成 credential。</p>
+  </div>
+
+  <section id="sat-map">
+    <h3>SAT 机制到 Goal-Plus 的对应</h3>
+    <p>迁移的是“结构”，不是“角色”。SAT 的 critic 被 verifier 替换，peer message 被单向 brief + pull 替换，integrator 被现有 Selection 替换；repair 仍由候选自己完成。</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>SAT 机制</th><th>Goal-Plus 对应</th><th>处理</th><th>保留 / 替换的理由</th></tr></thead>
+        <tbody>
+          <tr><td>explorer / candidate pool</td><td>相互隔离的 parallel candidates</td><td><span class="tag apply">替换</span></td><td>保留“多候选探索”，但不打开 peer 通道，也不共享草稿。</td></tr>
+          <tr><td>critic / peer audit</td><td>LLM Verifier 的 VerifierAudit + VLIW hard facts</td><td><span class="tag apply">替换</span></td><td>审计需要独立性；用 verifier 替代固定 critic，避免新增角色和对话拓扑。</td></tr>
+          <tr><td>repair action</td><td>AuditBrief.repair + 候选下一次尝试</td><td><span class="tag ok">保留</span></td><td>把“下一步查什么”变成有界动作，但执行者仍是拥有 edit surface 的候选。</td></tr>
+          <tr><td>peer discussion</td><td>单向 brief + 按需 pull</td><td><span class="tag apply">替换</span></td><td>只传递审计结论，不允许候选互相对话；投递是 transport，不是协作本身。</td></tr>
+          <tr><td>integrator</td><td>现有 Selection / Promotion</td><td><span class="tag ok">保留但不改</span></td><td>整合仍由现有 hard/quality 规则完成；审计不能改写选择。</td></tr>
+          <tr><td>strategy bank / reflection</td><td>冻结的 task reference + defect taxonomy</td><td><span class="tag shadow">部分保留</span></td><td>先把审计信号验证清楚；本轮不做跨 run 学习，也不在线更新 verifier 策略。</td></tr>
+          <tr><td>fixed team / team phases</td><td>不迁移</td><td><span class="tag none">舍弃</span></td><td>Goal-Plus 没有固定团队；强行加入角色和阶段会违反候选隔离。</td></tr>
+          <tr><td>coverage vs selection gap</td><td>coverage + selection loss + audit precision</td><td><span class="tag ok">保留为观测</span></td><td>SAT 的经验是“有更好的候选”不等于“最终选中”；本实验把这些拆开测量。</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout violet">
+      <strong>与 SAT 的边界：</strong>本实验不声称复现 SAT 的团队收益，也不使用固定角色或 peer 通信。它检验的是一个更窄的问题：在 Goal-Plus 的隔离候选拓扑中，审计—修复信号是否有增量价值。
+    </div>
+  </section>
+</section>
+
+<section class="section" id="groups">
+  <h2>三、实验分组条件</h2>
+  <p class="lead">所有组固定同一 VLIW 任务、官方 Judge、模型、T/K/C/R 和 evaluator 合同，只改变 verifier / audit / closure。N0 是可选的“无 verifier”基线；主归因只用 N0v/N1/N2/N3。</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>组</th><th>LLM Verifier</th><th>审计产出</th><th>投递</th><th>回执 / credential</th><th>相对上一组只增加</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td><strong>N0</strong> <span class="tag base">optional</span></td><td>off</td><td>off</td><td>off</td><td>off</td><td>无 verifier 基线</td><td>只回答“多一次 verifier 调用的算力影响”</td></tr>
+        <tr><td><strong>N0v</strong> <span class="tag control">control</span></td><td>on；diagnostic scores</td><td>off</td><td>off</td><td>off</td><td>verifier 调用</td><td>compute-matched 控制：有 verifier，无 brief</td></tr>
+        <tr><td><strong>N1</strong> <span class="tag shadow">shadow</span></td><td>on</td><td>shadow</td><td>不投递</td><td>off</td><td>审计生产</td><td>H1：审计能否产出可定位缺陷</td></tr>
+        <tr><td><strong>N2</strong> <span class="tag apply">pull</span></td><td>on</td><td>apply</td><td>pull</td><td>off</td><td>投递</td><td>H2：送达是否改变行为并改善答案</td></tr>
+        <tr><td><strong>N3</strong> <span class="tag closure">closure</span></td><td>on</td><td>apply</td><td>pull</td><td>response + credential</td><td>闭环</td><td>H3：回执与 hard credential 是否进一步提高修复</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>归因台阶</h3>
+  <div class="grid">
+    <div class="card span-6">
+      <div class="num">Production</div>
+      <h3>N1 − N0v</h3>
+      <p>只多“审计生产”。如果这里没有可定位缺陷，后面不需要谈投递。</p>
+    </div>
+    <div class="card span-6">
+      <div class="num">Delivery</div>
+      <h3>N2 − N1</h3>
+      <p>只多“送达”。如果 delivery 或 uptake 没有发生，分数差异不能归因于审计。</p>
+    </div>
+    <div class="card span-6">
+      <div class="num">Closure</div>
+      <h3>N3 − N2</h3>
+      <p>只多“回执 + credential”。用来检查“送达不等于修复”的最后一公里。</p>
+    </div>
+    <div class="card span-6">
+      <div class="num">Overall</div>
+      <h3>N2 − N0v</h3>
+      <p>审计 + 投递的总效果。不能反过来拆成生产或投递各自的贡献。</p>
+    </div>
+  </div>
+
+  <h3>固定条件</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>维度</th><th>Phase 0</th><th>Phase 1</th></tr></thead>
+      <tbody>
+        <tr><td>Benchmark</td><td>local-vliw</td><td>EdgeBench VLIW 官方 Judge</td></tr>
+        <tr><td>预算 T</td><td>1800s</td><td>7200s（2h）</td></tr>
+        <tr><td>候选 / 并发 / 重复</td><td>K=4；C=1；R=3</td><td>K=4；C=1；R=3</td></tr>
+        <tr><td>Harness / 模型</td><td>同一变体内固定</td><td>Pi 与 Codex 分开，不合并</td></tr>
+        <tr><td>Judge</td><td>本地 evaluator</td><td>官方 Judge；hidden 只做最终判定</td></tr>
+        <tr><td>审计合同</td><td>冻结 task reference、verifier instruction、defect taxonomy</td><td>同左；实验中途不改</td></tr>
+        <tr><td>候选拓扑</td><td>隔离候选；无 peer；无旧 SAT 角色/阶段</td><td>同左</td></tr>
+        <tr><td>投递</td><td>旧 steering push 关闭；审计 brief 走 pull</td><td>同左</td></tr>
+        <tr><td>Selection</td><td>保持既有 hard/quality 规则</td><td>同左；审计不得改写</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout amber">
+    <strong>统一约束：</strong>全部 N 组使用隔离候选、<code>allocation=None</code>、旧 steering 推送关闭；审计 brief 只走 pull。不启用旧 SAT 角色/阶段；同一变体内 K=4、C=1、R=3、同 T。禁止把 Pi 与 Codex 混成一个样本，禁止跨 T 比较，禁止在看到结果后更换主终点。
+  </div>
+</section>
+
+<section class="section" id="steps">
+  <h2>四、实验步骤</h2>
+  <p class="lead">先接线，再小预算，再正式矩阵。每一步都有明确的产物和门禁；Gate 不通过时先修机制，不扩预算。</p>
+
+  <div class="steps">
+    <div class="step">
+      <div>
+        <h3>冻结合同</h3>
+        <p>固定 task、Judge、harness/模型、T/K/C/R、verifier audit 合同、task reference hash、audit mode 和 closure。同一变体内所有 N 组共用同一合同。</p>
+        <div class="evidence">产物：freeze manifest、task reference hash、profile、source commit</div>
+      </div>
+    </div>
+    <div class="step">
+      <div>
+        <h3>接线 smoke</h3>
+        <p>确认 N1 有 brief 产出但不投递；N2 的 brief 能在候选下一次工具调用时取到；N3 的 response 工具可调用；确认没有 push steering、旧 SAT 角色或 peer 通道。</p>
+        <div class="evidence">产物：brief 样本、delivery 记录、response 记录、环境检查</div>
+      </div>
+    </div>
+    <div class="step">
+      <div>
+        <h3>Phase 0：短预算 pilot</h3>
+        <p>local-vliw，N0v/N1/N2，T=1800s，R=3，共 9 个 campaign。只回答接线、审计精度、delivery、方差和 N0v 是否有 headroom。</p>
+        <div class="evidence">产物：audit 摘要、precision 标签、delivery rate、方差估计</div>
+      </div>
+    </div>
+    <div class="step">
+      <div>
+        <h3>过 Gate 0 / Gate 1</h3>
+        <p>Gate 0 看接线；Gate 1 看审计质量、delivery 和 harm。失败时修 producer/brief/投递，不进入 2h 正式矩阵。</p>
+        <div class="evidence">产物：gate 记录、失败原因、修复记录</div>
+      </div>
+    </div>
+    <div class="step">
+      <div>
+        <h3>Phase 1：正式矩阵</h3>
+        <p>EdgeBench VLIW，N0v/N1/N2/N3，T=7200s，R=3；Pi 与 Codex 分开运行。按两套 harness 计，共 24 个 campaign；保留官方 Judge 结果和机制计数。</p>
+        <div class="evidence">产物：official score、cycles、briefs、credentials、token/cost</div>
+      </div>
+    </div>
+    <div class="step">
+      <div>
+        <h3>导出与分析</h3>
+        <p>导出 brief/credential，汇总 delivery、uptake、repair lift 和 paired effect；用 bootstrap 95% CI 与 MDE 判断方向，不只报均值。</p>
+        <div class="evidence">产物：结果表、配对分析、负结果解释、复现记录</div>
+      </div>
+    </div>
+  </div>
+
+  <h3>运行矩阵</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>阶段</th><th>Arms</th><th>Harness</th><th>R</th><th>Campaign 数</th><th>回答</th></tr></thead>
+      <tbody>
+        <tr><td>Phase 0</td><td>N0v / N1 / N2</td><td>1 套（local）</td><td>3</td><td>9</td><td>接线、审计精度、delivery、方差</td></tr>
+        <tr><td>Phase 1</td><td>N0v / N1 / N2 / N3</td><td>Pi、Codex 分开</td><td>3</td><td>24</td><td>投递与闭环的因果增量</td></tr>
+        <tr><td>Phase 2 <span class="tag pending">optional</span></td><td>N3 + final audit</td><td>按需</td><td>按需</td><td>—</td><td>收尾审计、tie-break、二次裁决</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>门禁</h3>
+  <div class="gate"><div class="g-name">Gate 0<br>接线</div><div class="g-check">N1 有 brief 产出但不投递；N2 的 brief 可送达；N3 的 response 可调用；N 组没有 push steering、SAT 角色或 peer 调用。</div><div class="g-out">失败 → 只做本地 smoke，不跑正式矩阵</div></div>
+  <div class="gate"><div class="g-name">Gate 1<br>审计质量</div><div class="g-check">audit precision 与覆盖率过冻结阈值；delivery 可解释；N0v 有 headroom；harm 未系统性恶化。</div><div class="g-out">失败 → 修 producer/brief/投递，不扩预算</div></div>
+  <div class="gate"><div class="g-name">Gate 2<br>效果</div><div class="g-check">N2−N1 或 N3−N2 的 official score 按赛事方向改善且 CI 支持；机制计数与分数变化一致；成本可接受。</div><div class="g-out">通过 → 结论；不通过 → 报告负结果与机制解释</div></div>
+
+  <div class="callout green">
+    <strong>执行原则：</strong>Phase 0 不通过，不进入 Phase 1；Phase 1 不显著，不改主终点。先检查 delivery/uptake 是否真的发生，再检查审计是否被采纳。
+  </div>
+</section>
+
+<section class="section" id="metrics">
+  <h2>五、测量指标</h2>
+  <p class="lead">指标分四层：硬终点、审计机制、行为变化、成本。每类都必须能从持久化 artifact 复算，而不是从 transcript 猜测。主终点是 EdgeBench VLIW 官方分数；correctness gate 是硬门槛，cycles 作为 VLIW 关键指标同时报告。</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>层级</th><th>指标</th><th>方向</th><th>定义 / 来源</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td><strong>硬终点</strong></td><td>official score</td><td>按赛事定义</td><td>EdgeBench 官方 Judge；final only</td><td>H2/H3 主终点</td></tr>
+        <tr><td><strong>硬终点</strong></td><td>correctness gate</td><td>越高越好；不得回退</td><td>hard verifier / 官方 Judge</td><td>硬门槛</td></tr>
+        <tr><td><strong>硬终点</strong></td><td>cycles（max / best / slowest）</td><td>越低越好</td><td>VLIW evaluator；同时报最大、最好、最慢 case</td><td>VLIW 主指标</td></tr>
+        <tr><td><strong>审计生产</strong></td><td>briefs、auditable rate、defect count</td><td>—</td><td><code>audit/briefs</code></td><td>H1</td></tr>
+        <tr><td><strong>审计质量</strong></td><td>precision by kind、coverage</td><td>越高越好</td><td>独立标签 + defect taxonomy</td><td>H1</td></tr>
+        <tr><td><strong>投递</strong></td><td>delivered、delivery rate</td><td>越高越好</td><td>brief status + tool response；delivery rate = delivered / produced</td><td>H2</td></tr>
+        <tr><td><strong>行为</strong></td><td>accepted / ignored / rebutted、artifact change</td><td>—</td><td>候选回执 + diff</td><td>H2</td></tr>
+        <tr><td><strong>修复</strong></td><td>uptake、repair lift、harm、time-to-repair</td><td>lift 越高越好；harm 越低越好</td><td>brief 前后 hard settlement；只在 artifact 变化时计算</td><td>H2/H3</td></tr>
+        <tr><td><strong>闭环</strong></td><td>queued / verified / rejected</td><td>verified 越高越好</td><td><code>audit/credentials</code> + 后续 hard score/artifact</td><td>H3</td></tr>
+        <tr><td><strong>选择</strong></td><td>coverage、selection loss、spread</td><td>coverage 越高越好；loss 越低越好</td><td>run 内 candidate best vs selected</td><td>解释“有更好候选但没选中”</td></tr>
+        <tr><td><strong>成本</strong></td><td>tokens、cost、verifier calls、latency</td><td>越低越好</td><td>verifier usage + campaign manifest</td><td>决策与 harm 解释</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>测量规则</h3>
+  <ul>
+    <li><strong>VLIW 不能用平均 cycles 掩盖慢 case：</strong>必须同时报告 max、best 和 slowest case；cycles 是越低越好。</li>
+    <li><strong>hidden Judge 只做最终判定：</strong>public feedback 不能替代 hidden 结论；调参不得使用 hidden case。</li>
+    <li><strong>Audit precision 需要独立标签：</strong>未被标注的 brief 记为 unknown，不记为 correct；不能用候选是否采纳来反推精度。</li>
+    <li><strong>Delivery 不等于 uptake：</strong>工具返回 brief 只证明送达；accepted 也只证明候选口头接受；artifact change 才证明行为变化。</li>
+    <li><strong>Credential 是 hard-evidence 关闭：</strong>verified 只表示后续 hard score/artifact 改善，不证明具体 defect 的语义被完全修复。</li>
+    <li><strong>配对与不确定性：</strong>以 task × seed/campaign 为配对单位；报告 paired difference、bootstrap 95% CI 和 MDE；Pi/Codex 分开。</li>
+    <li><strong>缺失数据：</strong>失败或 incomplete 的 campaign 不进入均值，单独列出原因；不把缺失当 0。</li>
+  </ul>
+
+  <div class="callout cyan">
+    <strong>解释顺序：</strong>先看 briefs/delivered/uptake，再看 artifact change/repair lift，最后看 official score。机制不成立时，不解释分数。
+  </div>
+</section>
+
+<section class="section" id="results">
+  <h2>六、实验结果</h2>
+
+  <div class="status-banner">
+    <div class="status-kicker">Current status · 截至本版</div>
+    <div class="status-title">机制已接线，正式实验尚未运行</div>
+    <p>N0–N3 的 Phase 0 / Phase 1 尚未执行，因此本文件没有可报告的 official score、cycles 或 repair lift。下面严格区分“工程接线结果”和“实验效果结果”：前者说明方案可以跑、可以测量，后者才能回答“是否有效”。</p>
+  </div>
+
+  <h3>6.1 当前可报告的工程结果</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>检查项</th><th>当前结果</th><th>证据 / 说明</th></tr></thead>
+      <tbody>
+        <tr><td>N0 / N0v / N1 / N2 / N3 可启动</td><td><span class="tag ok">已接</span></td><td>local 与 EdgeBench 的 profile/preset 已存在，controller 可切换对应模式。</td></tr>
+        <tr><td>brief 生产 / 读取</td><td><span class="tag ok">已接</span></td><td>shadow 只持久化；apply 在候选下一次工具调用返回；不是效果证据。</td></tr>
+        <tr><td>N3 回执 / credential</td><td><span class="tag ok">已接</span></td><td>候选可返回 accepted/ignored/rebutted；后续 hard settlement 关闭 credential。</td></tr>
+        <tr><td>审计证据导出</td><td><span class="tag ok">已接</span></td><td>brief、credential、delivery 计数可从 run/cell artifact 汇总。</td></tr>
+        <tr><td>official score / cycles</td><td><span class="tag pending">未获得</span></td><td>尚未运行真实 EdgeBench 正式矩阵；没有可报告的分数。</td></tr>
+        <tr><td>audit precision</td><td><span class="tag pending">未获得</span></td><td>还没有独立标注的 brief 样本；unknown 不能记为 correct。</td></tr>
+        <tr><td>delivery / uptake / repair lift</td><td><span class="tag pending">未获得</span></td><td>没有真实候选行为数据；接线测试不能替代。</td></tr>
+        <tr><td>token / cost</td><td><span class="tag pending">未获得</span></td><td>没有真实模型用量；成本效应未知。</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="result-table-note">注意：机制测试通过只说明代码路径可执行，不说明审计改善答案。当前不能把“已接”写成“已验证”。</p>
+
+  <h3>6.2 表 R1 · 机制计数（待运行）</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Arm</th><th>Briefs</th><th>Delivered</th><th>Accepted</th><th>Ignored</th><th>Rebutted</th><th>Verified</th><th>Rejected</th><th>Delivery rate</th></tr></thead>
+      <tbody>
+        <tr><td>N0v</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+        <tr><td>N1</td><td class="result-empty">待运行</td><td>设计为 0</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>0（设计）</td></tr>
+        <tr><td>N2</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class="result-empty">待运行</td></tr>
+        <tr><td>N3</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="result-table-note">“待运行”不是 0，也不是负结果；它表示尚未产生数据。</p>
+
+  <h3>6.3 表 R2 · 配对效应（待运行）</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>对比</th><th>n pairs</th><th>Mean Δ official</th><th>Bootstrap 95% CI</th><th>MDE</th><th>方向</th></tr></thead>
+      <tbody>
+        <tr><td>N1 − N0v</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td><td>—</td></tr>
+        <tr><td>N2 − N1</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td><td>—</td></tr>
+        <tr><td>N3 − N2</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td><td>—</td></tr>
+        <tr><td>N2 − N0v</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>6.4 表 R3 · 审计质量与行为（待运行）</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Arm</th><th>Precision</th><th>Coverage</th><th>Uptake</th><th>Repair lift</th><th>Harm</th><th>Cost Δ</th></tr></thead>
+      <tbody>
+        <tr><td>N1</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td><td>—</td><td>—</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td></tr>
+        <tr><td>N2</td><td>—</td><td>—</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td></tr>
+        <tr><td>N3</td><td>—</td><td>—</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td><td class="result-empty">待运行</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>6.5 结果判定规则</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>假设</th><th>支持条件</th><th>如果不支持</th></tr></thead>
+      <tbody>
+        <tr><td><strong>H1 审计生产</strong></td><td>N1 相对 N0v 产出可定位缺陷；precision/coverage 过冻结阈值；harm 未系统性恶化。</td><td>修 producer、task reference 或 defect taxonomy；不进入投递归因。</td></tr>
+        <tr><td><strong>H2 投递</strong></td><td>N2−N1 的 official score 按赛事方向改善且 CI 支持；delivery/uptake 与分数方向一致。</td><td>先查 delivery 与 uptake，再查 brief 是否可执行；不更换主终点。</td></tr>
+        <tr><td><strong>H3 闭环</strong></td><td>N3−N2 的 verified rate &gt; 0，repair lift 大于 harm；回执没有诱导过度修复。</td><td>查 credential 关闭条件与回执行为；报告负结果。</td></tr>
+        <tr><td><strong>H0 算力</strong> <span class="tag base">optional</span></td><td>N0v−N0 用于解释 verifier 调用本身的成本；不替代审计归因。</td><td>只报告成本，不推断审计效果。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout amber">
+    <strong>当前结论只能到这里：</strong>方案已经可以运行、可以测量、可以按 N0–N3 归因；但还没有任何证据表明审计提高了 accuracy、降低了 cycles，或闭环修复了具体 defect。这些结论必须等 Phase 0 / Phase 1 的 official score 与配对 CI 出来后再写。
+  </div>
+</section>
+
+<section class="section" id="conclusion">
+  <h2>七、结论边界与下一步</h2>
+  <p class="lead">把“现在能说什么”和“现在不能说什么”分开，是这份文档最重要的约束。机制可运行不等于机制有效；机制有效也不等于可以外推到 SAT 的团队协作。</p>
+
+  <div class="grid">
+    <div class="card span-6">
+      <div class="num">Can claim now</div>
+      <h3>现在可以说的</h3>
+      <ul>
+        <li>审计—修复回路在 Goal-Plus 的隔离候选拓扑中有可执行的接线。</li>
+        <li>N0–N3 能把“生产、投递、闭环”拆成可分别估计的对照。</li>
+        <li>brief、response、credential 和 delivery 都有可复核的 artifact。</li>
+        <li>方案没有依赖 peer 通道，也没有让 verifier 改写 artifact 或 Selection。</li>
+      </ul>
+    </div>
+    <div class="card span-6">
+      <div class="num">Cannot claim yet</div>
+      <h3>现在不能说的</h3>
+      <ul>
+        <li>审计提高了 VLIW 的 official score 或降低了 cycles。</li>
+        <li>闭环修复了具体 defect，而不只是 hard score 变化。</li>
+        <li>可以复现 SAT 的团队收益，或证明固定角色/peer 协作更好。</li>
+        <li>负结果不存在；目前只是还没有正式数据。</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>下一步</h3>
+  <div class="steps">
+    <div class="step">
+      <div>
+        <h3>先跑 Phase 0</h3>
+        <p>用 30 分钟本地预算拿 N0v/N1/N2 的接线、precision、delivery、方差和 headroom；不追求效应量。</p>
+        <div class="evidence">出口：Gate 0 / Gate 1</div>
+      </div>
+    </div>
+    <div class="step">
+      <div>
+        <h3>冻结分析口径</h3>
+        <p>在正式矩阵前冻结主终点、precision 阈值、配对单位和排除规则；之后不因结果改口径。</p>
+        <div class="evidence">出口：analysis freeze 记录</div>
+      </div>
+    </div>
+    <div class="step">
+      <div>
+        <h3>再跑 Phase 1</h3>
+        <p>EdgeBench VLIW、2h、N0v/N1/N2/N3、Pi/Codex 分开、R=3；按 H1/H2/H3 填结果表，正负都报告。</p>
+        <div class="evidence">出口：official score、机制计数、配对 CI、成本</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout green">
+    <strong>决策规则：</strong>如果 N2−N1 正向且机制一致，审计投递值得保留；如果 N3−N2 只在 verified rate 上有效、分数无变化，说明闭环改善了可观测性但没有改善答案；如果 N2−N1 无效，优先修 delivery/uptake，而不是改主终点或扩大预算。
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap row">
+    <span>SAT → Goal-Plus 审计迁移 · 实验方案与当前结果</span>
+    <span>机制已接；N0–N3 正式数据待运行 · EdgeBench VLIW · Pi/Codex 分开</span>
+  </div>
+</footer>
+</body>
+</html>
