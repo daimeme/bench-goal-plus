@@ -139,6 +139,24 @@ class SatVliwProfileTest(unittest.TestCase):
                 environment[SAT_GLOBAL_EVIDENCE_MODE_ENV], "independent"
             )
 
+        n3_30m = self.agent.resolve_spec(
+            preset_id="local-vliw-audit-n3-30m"
+        )
+        self.assertEqual(n3_30m.conditions, ("N3",))
+        self.assertEqual(
+            n3_30m.concurrency(), {"T": 1800, "K": 4, "C": 1, "R": 1}
+        )
+        self.assertEqual(n3_30m.worker_runtime_seconds, 1500)
+        n3_30m_profile = json.loads(
+            (
+                AUDIT_PROFILE_ROOT
+                / "vliw-audit-n3-30m-deepseek-v4-flash-medium.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(n3_30m_profile["experiment_mode"], "n3")
+        self.assertEqual(n3_30m_profile["methods"], ["goal-plus-pi"])
+        self.assertEqual(n3_30m_profile["model"], "deepseek-v4-flash")
+
         edge = json.loads(
             (
                 EDGE_PROFILE_ROOT
