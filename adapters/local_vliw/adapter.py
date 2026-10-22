@@ -38,6 +38,7 @@ TASK_ID = "vliw_kernel_optimization"
 ARTIFACT_NAME = "solution.py"
 PRIMARY_METRIC = "cycles"
 DIRECTION = "minimize"
+GOAL_PLUS_TASK_REFERENCE = ("TASK.md", "problem.py", "runner.py", "verifier.py")
 CODEX_SANDBOX = "workspace-write"
 CASE_SET_DESCRIPTION = (
     "public local VLIW cases plus controller-owned held-out local cases"

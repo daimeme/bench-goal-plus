@@ -79,6 +79,7 @@ from experiments.benchmark_compare.sat import (  # noqa: E402
     SAT_CONTROLLER_EXPERIMENT_ENV,
     SAT_EXPERIMENT_MODES,
     SAT_GLOBAL_EVIDENCE_MODE_ENV,
+    SAT_TASK_REFERENCE_ENV,
     require_sat_controller_experiment,
     resolve_sat_experiment_mode,
     sat_controller_environment,
@@ -1099,6 +1100,10 @@ def prepare(args: argparse.Namespace) -> int:
                     "global_evidence_mode": sat_controller_environment(sat_mode)[
                         GOAL_PLUS_GLOBAL_EVIDENCE_MODE_ENV
                     ],
+                    "task_reference": (
+                        list(getattr(module, "GOAL_PLUS_TASK_REFERENCE", ()))
+                        or None
+                    ),
                 }
                 if sat_mode is not None
                 else None
@@ -2599,6 +2604,11 @@ def execute_goal_plus(
                 GOAL_PLUS_GLOBAL_EVIDENCE_MODE_ENV
             ]
         )
+        task_reference = sat_experiment.get("task_reference")
+        if task_reference:
+            environment[SAT_TASK_REFERENCE_ENV] = json.dumps(task_reference)
+        else:
+            environment.pop(SAT_TASK_REFERENCE_ENV, None)
         # The native evidence annotator is an unlisted LLM reviewer outside
         # the A1-A5 matrix. Disable it so A1 has no LLM claim analysis and the
         # controller-frozen verifier is the only recognition variable.
@@ -2608,6 +2618,7 @@ def execute_goal_plus(
         environment.pop("GOAL_PLUS_CONTROLLER_SHARED_CACHE", None)
     else:
         environment.pop(SAT_CONTROLLER_EXPERIMENT_ENV, None)
+        environment.pop(SAT_TASK_REFERENCE_ENV, None)
     pi_provider_id, pi_api, pi_api_key_env = pi_provider_config(args)
     if (workspace / ".gp").exists():
         raise RuntimeError("standard Goal Plus run must start without .gp")

@@ -9,6 +9,7 @@ from bench_goal_plus.runners.factory import create_runner
 from experiments.benchmark_compare.sat import (
     SAT_CONTROLLER_EXPERIMENT_ENV,
     SAT_GLOBAL_EVIDENCE_MODE_ENV,
+    SAT_TASK_REFERENCE_ENV,
     require_sat_controller_experiment,
     resolve_sat_experiment_mode,
     sat_controller_environment,
@@ -53,6 +54,19 @@ class SatVliwProfileTest(unittest.TestCase):
             self.assertEqual(profile["experiment_mode"], f"a{index}")
             for stale_key in ("shared_cache", "shared_evidence", "verifier", "steering"):
                 self.assertNotIn(stale_key, profile)
+
+    def test_vliw_task_reference_is_declared_for_verifier_input(self) -> None:
+        source = (ROOT / "adapters/local_vliw/adapter.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(
+            'GOAL_PLUS_TASK_REFERENCE = ("TASK.md", "problem.py", '
+            '"runner.py", "verifier.py")',
+            source,
+        )
+        self.assertEqual(
+            SAT_TASK_REFERENCE_ENV, "GOAL_PLUS_CONTROLLER_TASK_REFERENCE"
+        )
 
     def test_common_runner_freezes_condition_and_profile(self) -> None:
         spec = self.agent.resolve_spec(preset_id="local-vliw-sat-a5-2h")
