@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from bench_runtime_paths import configure_temp_environment
+from bench_goal_plus.pi_models import apply_sampling_params
 from bench_goal_plus.sat_contract import sat_controller_environment
 
 from . import io
@@ -270,6 +271,9 @@ def cell_environment(
         )
         sat_mode = cell.get("experiment_mode")
         extra_env = {
+            # Keep Python hash iteration and timestamps identical across arms.
+            "PYTHONHASHSEED": "0",
+            "TZ": "UTC",
             "SFORGE_GOAL_PLUS_PARALLEL_NUM": str(cell["inner_search_concurrency"]),
             "SFORGE_GOAL_PLUS_WORKER_RUNTIME_SECONDS": str(
                 cell["worker_runtime_seconds"]
@@ -797,6 +801,11 @@ def prepare_pi_provider_runtime(
         runtime_dir = destination / "runtime"
         runtime_dir.mkdir(parents=True, exist_ok=True)
         resources.pi_models_file = runtime_dir / "pi-models.json"
+        if profile.get("deterministic", False):
+            registry = apply_sampling_params(
+                registry,
+                temperature=float(profile.get("sampling_temperature", 0.0)),
+            )
         io.write_json(resources.pi_models_file, registry)
         resources.pi_models_file.chmod(0o600)
     main_status = bundle["models"][0]

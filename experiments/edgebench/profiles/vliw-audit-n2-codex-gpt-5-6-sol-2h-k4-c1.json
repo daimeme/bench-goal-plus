@@ -21,7 +21,7 @@
   "reasoning_effort": "medium",
   "wall_time_seconds": 7200,
   "concurrency": 4,
-  "worker_runtime_seconds": 6600,
+  "worker_runtime_seconds": 4800,
   "goal_plus_verifier_timeout_seconds": 120,
   "goal_plus_finalization_grace_seconds": 300,
   "cell_concurrency": 1,
@@ -42,5 +42,9 @@
     "timeout": "T=7200 seconds per task trajectory or Search run",
     "eval_interval": "effective hidden-Judge eval_interval=300 seconds",
     "internet": "effective internet=false from profile override"
-  }
+  },
+  "worker_min_verifier_runs": 1,
+  "closeout_reserve_seconds": 600,
+  "deterministic": true,
+  "sampling_temperature": 0.0
 }

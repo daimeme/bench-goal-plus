@@ -1125,7 +1125,7 @@
       "wall_time_seconds": 7200,
       "concurrency": 4,
       "cell_concurrency": 1,
-      "worker_runtime_seconds": 6600,
+      "worker_runtime_seconds": 4800,
       "profile": "benchmarks/profiles/vliw-audit/vliw-audit-n0-2h-deepseek-v4-flash-medium.json",
       "conditions": [
         "N0"
@@ -1144,7 +1144,7 @@
         "wall_time_seconds": 7200,
         "concurrency": 4,
         "cell_concurrency": 1,
-        "worker_runtime_seconds": 6600
+        "worker_runtime_seconds": 4800
       }
     },
     {
@@ -1158,7 +1158,7 @@
       "wall_time_seconds": 7200,
       "concurrency": 4,
       "cell_concurrency": 1,
-      "worker_runtime_seconds": 6600,
+      "worker_runtime_seconds": 4800,
       "profile": "benchmarks/profiles/vliw-audit/vliw-audit-n0v-2h-deepseek-v4-flash-medium.json",
       "conditions": [
         "N0v"
@@ -1177,7 +1177,7 @@
         "wall_time_seconds": 7200,
         "concurrency": 4,
         "cell_concurrency": 1,
-        "worker_runtime_seconds": 6600
+        "worker_runtime_seconds": 4800
       }
     },
     {
@@ -1191,7 +1191,7 @@
       "wall_time_seconds": 7200,
       "concurrency": 4,
       "cell_concurrency": 1,
-      "worker_runtime_seconds": 6600,
+      "worker_runtime_seconds": 4800,
       "profile": "benchmarks/profiles/vliw-audit/vliw-audit-n1-2h-deepseek-v4-flash-medium.json",
       "conditions": [
         "N1"
@@ -1210,7 +1210,7 @@
         "wall_time_seconds": 7200,
         "concurrency": 4,
         "cell_concurrency": 1,
-        "worker_runtime_seconds": 6600
+        "worker_runtime_seconds": 4800
       }
     },
     {
@@ -1224,7 +1224,7 @@
       "wall_time_seconds": 7200,
       "concurrency": 4,
       "cell_concurrency": 1,
-      "worker_runtime_seconds": 6600,
+      "worker_runtime_seconds": 4800,
       "profile": "benchmarks/profiles/vliw-audit/vliw-audit-n2-2h-deepseek-v4-flash-medium.json",
       "conditions": [
         "N2"
@@ -1243,7 +1243,7 @@
         "wall_time_seconds": 7200,
         "concurrency": 4,
         "cell_concurrency": 1,
-        "worker_runtime_seconds": 6600
+        "worker_runtime_seconds": 4800
       }
     },
     {
@@ -1327,7 +1327,7 @@
       "wall_time_seconds": 7200,
       "concurrency": 4,
       "cell_concurrency": 1,
-      "worker_runtime_seconds": 6600,
+      "worker_runtime_seconds": 4800,
       "profile": "benchmarks/profiles/vliw-audit/vliw-audit-matrix-2h-deepseek-v4-flash-medium.json",
       "conditions": [
         "N0v",
@@ -1352,7 +1352,7 @@
         "wall_time_seconds": 7200,
         "concurrency": 4,
         "cell_concurrency": 1,
-        "worker_runtime_seconds": 6600
+        "worker_runtime_seconds": 4800
       }
     },
     {
@@ -1720,7 +1720,7 @@
         "wall_time_seconds": 7200,
         "concurrency": 4,
         "cell_concurrency": 1,
-        "worker_runtime_seconds": 6600
+        "worker_runtime_seconds": 4800
       }
     },
     {

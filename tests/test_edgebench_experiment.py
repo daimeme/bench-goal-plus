@@ -3361,6 +3361,8 @@ class EdgeBenchExperimentTest(unittest.TestCase):
             "worker_model": "worker-provider/worker-model",
             "evidence_annotator_model": "main-provider/annotator-model",
             "task_ids": ["vliw_kernel_optimization"],
+            "deterministic": True,
+            "sampling_temperature": 0.0,
         }
         with mock.patch.dict(
             EDGE_RUNTIME.os.environ,
@@ -3410,6 +3412,11 @@ class EdgeBenchExperimentTest(unittest.TestCase):
             ],
             ["main-model", "annotator-model"],
         )
+        for provider in runtime_registry["providers"].values():
+            for model in provider.get("models", []):
+                self.assertEqual(
+                    model["samplingParams"]["temperature"], 0.0
+                )
         self.assertEqual(
             resources.pi_provider_credentials,
             {"MAIN_API_KEY": "main-secret", "WORKER_API_KEY": "worker-secret"},

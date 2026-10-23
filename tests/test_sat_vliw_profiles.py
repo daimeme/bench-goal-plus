@@ -130,6 +130,7 @@ class SatVliwProfileTest(unittest.TestCase):
             )
             self.assertEqual(profile["experiment_mode"], mode)
             self.assertEqual(profile["conditions"], [condition_id])
+            self.assertEqual(profile["worker_runtime_seconds"], 4800)
             self.assertEqual(
                 resolve_sat_experiment_mode(CONDITIONS[condition_id], None),
                 mode,
@@ -165,6 +166,10 @@ class SatVliwProfileTest(unittest.TestCase):
         )
         self.assertEqual(edge["experiment_mode"], "n1")
         self.assertEqual(edge["global_evidence_mode"], "independent")
+        self.assertEqual(edge["worker_runtime_seconds"], 4800)
+        self.assertEqual(edge["worker_min_verifier_runs"], 1)
+        self.assertEqual(edge["closeout_reserve_seconds"], 600)
+        self.assertTrue(edge["deterministic"])
 
     def test_n3_closure_preset_is_available(self) -> None:
         self.assertTrue(CONDITIONS["N3"].implemented)

@@ -6,6 +6,37 @@ from pathlib import Path
 from typing import Any
 
 
+def apply_sampling_params(
+    registry: dict[str, Any], *, temperature: float = 0.0
+) -> dict[str, Any]:
+    """Make an isolated Pi registry reproducible for benchmark comparisons.
+
+    Pi merges ``samplingParams`` into the provider request.  The registry is
+    benchmark-owned and written to the run directory, so this does not mutate
+    the user's Pi home or a shared provider catalog.
+    """
+
+    if temperature < 0:
+        raise ValueError("sampling temperature must be non-negative")
+    providers = registry.get("providers")
+    if not isinstance(providers, dict):
+        return registry
+    for provider in providers.values():
+        if not isinstance(provider, dict):
+            continue
+        models = provider.get("models")
+        if not isinstance(models, list):
+            continue
+        for model in models:
+            if not isinstance(model, dict):
+                continue
+            params = model.get("samplingParams")
+            merged = dict(params) if isinstance(params, dict) else {}
+            merged["temperature"] = temperature
+            model["samplingParams"] = merged
+    return registry
+
+
 def native_catalog_model(provider: str, model: str, api: str) -> dict[str, Any]:
     agent_dir = Path(os.environ.get("PI_CODING_AGENT_DIR", str(Path.home() / ".pi/agent")))
     catalog_path = agent_dir / "models-store.json"

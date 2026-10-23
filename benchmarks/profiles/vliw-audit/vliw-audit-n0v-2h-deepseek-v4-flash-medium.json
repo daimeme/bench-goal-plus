@@ -12,7 +12,7 @@
   "wall_time_seconds": 7200,
   "concurrency": 4,
   "cell_concurrency": 1,
-  "worker_runtime_seconds": 6600,
+  "worker_runtime_seconds": 4800,
   "id": "vliw-audit-n0v-2h-deepseek-v4-flash-medium",
   "conditions": [
     "N0v"

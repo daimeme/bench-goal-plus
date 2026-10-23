@@ -134,6 +134,8 @@ class EdgeBenchSatTest(unittest.TestCase):
             api_key="test-key",
         )
         values = extra_env(env)
+        self.assertEqual(values["PYTHONHASHSEED"], "0")
+        self.assertEqual(values["TZ"], "UTC")
         self.assertEqual(values["GOAL_PLUS_CONTROLLER_EXPERIMENT"], '{"mode":"a3"}')
         self.assertEqual(values["GOAL_PLUS_GLOBAL_EVIDENCE_MODE"], "manual")
         self.assertEqual(values["GOAL_PLUS_EVIDENCE_ANNOTATOR_DISABLED"], "1")
