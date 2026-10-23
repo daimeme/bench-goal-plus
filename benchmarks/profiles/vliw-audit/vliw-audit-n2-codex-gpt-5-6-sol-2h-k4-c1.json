@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "benchmark": "local-vliw",
+  "task_ids": [
+    "vliw_kernel_optimization"
+  ],
+  "methods": [
+    "goal-plus-codex"
+  ],
+  "model": "gpt-5.6-sol",
+  "reasoning_effort": "medium",
+  "wall_time_seconds": 7200,
+  "concurrency": 4,
+  "cell_concurrency": 1,
+  "worker_runtime_seconds": 4800,
+  "id": "vliw-audit-n2-codex-gpt-5-6-sol-2h-k4-c1",
+  "conditions": [
+    "N2"
+  ],
+  "experiment_mode": "n2",
+  "sat_protocol": null
+}

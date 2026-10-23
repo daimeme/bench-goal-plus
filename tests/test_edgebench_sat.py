@@ -103,6 +103,15 @@ class EdgeBenchSatTest(unittest.TestCase):
                 self.assertEqual(
                     spec.concurrency(), {"T": 7200, "K": 4, "C": 1, "R": 1}
                 )
+            codex = BenchmarkAgent().resolve_spec(
+                preset_id=f"edgebench-vliw-audit-{mode}-codex-2h"
+            )
+            self.assertEqual(codex.methods, ("goal-plus-codex",))
+            self.assertEqual(codex.model, "gpt-5.6-sol")
+            self.assertEqual(codex.reasoning_effort, "medium")
+            self.assertEqual(
+                codex.concurrency(), {"T": 7200, "K": 4, "C": 1, "R": 1}
+            )
 
     def test_controller_environment_keeps_a1_independent(self) -> None:
         self.assertEqual(

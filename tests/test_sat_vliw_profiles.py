@@ -158,6 +158,33 @@ class SatVliwProfileTest(unittest.TestCase):
         self.assertEqual(n3_30m_profile["methods"], ["goal-plus-pi"])
         self.assertEqual(n3_30m_profile["model"], "deepseek-v4-flash")
 
+        for mode, condition_id in (
+            ("n0", "N0"),
+            ("n0v", "N0v"),
+            ("n1", "N1"),
+            ("n2", "N2"),
+            ("n3", "N3"),
+        ):
+            spec = self.agent.resolve_spec(
+                preset_id=f"local-vliw-audit-{mode}-codex-2h"
+            )
+            self.assertEqual(spec.conditions, (condition_id,))
+            self.assertEqual(
+                spec.concurrency(), {"T": 7200, "K": 4, "C": 1, "R": 1}
+            )
+            self.assertEqual(spec.worker_runtime_seconds, 4800)
+            profile = json.loads(
+                (
+                    AUDIT_PROFILE_ROOT
+                    / f"vliw-audit-{mode}-codex-gpt-5-6-sol-2h-k4-c1.json"
+                ).read_text(encoding="utf-8")
+            )
+            self.assertEqual(profile["experiment_mode"], mode)
+            self.assertEqual(profile["conditions"], [condition_id])
+            self.assertEqual(profile["methods"], ["goal-plus-codex"])
+            self.assertEqual(profile["model"], "gpt-5.6-sol")
+            self.assertEqual(profile["reasoning_effort"], "medium")
+
         edge = json.loads(
             (
                 EDGE_PROFILE_ROOT

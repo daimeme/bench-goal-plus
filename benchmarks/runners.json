@@ -1280,6 +1280,171 @@
       }
     },
     {
+      "id": "local-vliw-audit-n0-codex-2h",
+      "description": "Audit N0 local VLIW: Goal Plus + Codex, gpt-5.6-sol medium, T=2h, K=4, C=1, R=1.",
+      "benchmarks": [
+        "local-vliw"
+      ],
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "medium",
+      "wall_time_seconds": 7200,
+      "concurrency": 4,
+      "cell_concurrency": 1,
+      "worker_runtime_seconds": 4800,
+      "profile": "benchmarks/profiles/vliw-audit/vliw-audit-n0-codex-gpt-5-6-sol-2h-k4-c1.json",
+      "conditions": [
+        "N0"
+      ],
+      "campaign_id_template": "local-vliw-audit-n0-codex-2h-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": [
+          "goal-plus-codex"
+        ],
+        "conditions": [
+          "N0"
+        ],
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1,
+        "worker_runtime_seconds": 4800
+      }
+    },
+    {
+      "id": "local-vliw-audit-n0v-codex-2h",
+      "description": "Audit N0v local VLIW: Goal Plus + Codex, gpt-5.6-sol medium, T=2h, K=4, C=1, R=1.",
+      "benchmarks": [
+        "local-vliw"
+      ],
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "medium",
+      "wall_time_seconds": 7200,
+      "concurrency": 4,
+      "cell_concurrency": 1,
+      "worker_runtime_seconds": 4800,
+      "profile": "benchmarks/profiles/vliw-audit/vliw-audit-n0v-codex-gpt-5-6-sol-2h-k4-c1.json",
+      "conditions": [
+        "N0v"
+      ],
+      "campaign_id_template": "local-vliw-audit-n0v-codex-2h-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": [
+          "goal-plus-codex"
+        ],
+        "conditions": [
+          "N0v"
+        ],
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1,
+        "worker_runtime_seconds": 4800
+      }
+    },
+    {
+      "id": "local-vliw-audit-n1-codex-2h",
+      "description": "Audit N1 local VLIW: Goal Plus + Codex, gpt-5.6-sol medium, T=2h, K=4, C=1, R=1.",
+      "benchmarks": [
+        "local-vliw"
+      ],
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "medium",
+      "wall_time_seconds": 7200,
+      "concurrency": 4,
+      "cell_concurrency": 1,
+      "worker_runtime_seconds": 4800,
+      "profile": "benchmarks/profiles/vliw-audit/vliw-audit-n1-codex-gpt-5-6-sol-2h-k4-c1.json",
+      "conditions": [
+        "N1"
+      ],
+      "campaign_id_template": "local-vliw-audit-n1-codex-2h-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": [
+          "goal-plus-codex"
+        ],
+        "conditions": [
+          "N1"
+        ],
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1,
+        "worker_runtime_seconds": 4800
+      }
+    },
+    {
+      "id": "local-vliw-audit-n2-codex-2h",
+      "description": "Audit N2 local VLIW: Goal Plus + Codex, gpt-5.6-sol medium, T=2h, K=4, C=1, R=1.",
+      "benchmarks": [
+        "local-vliw"
+      ],
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "medium",
+      "wall_time_seconds": 7200,
+      "concurrency": 4,
+      "cell_concurrency": 1,
+      "worker_runtime_seconds": 4800,
+      "profile": "benchmarks/profiles/vliw-audit/vliw-audit-n2-codex-gpt-5-6-sol-2h-k4-c1.json",
+      "conditions": [
+        "N2"
+      ],
+      "campaign_id_template": "local-vliw-audit-n2-codex-2h-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": [
+          "goal-plus-codex"
+        ],
+        "conditions": [
+          "N2"
+        ],
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1,
+        "worker_runtime_seconds": 4800
+      }
+    },
+    {
+      "id": "local-vliw-audit-n3-codex-2h",
+      "description": "Audit N3 local VLIW: Goal Plus + Codex, gpt-5.6-sol medium, T=2h, K=4, C=1, R=1.",
+      "benchmarks": [
+        "local-vliw"
+      ],
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "medium",
+      "wall_time_seconds": 7200,
+      "concurrency": 4,
+      "cell_concurrency": 1,
+      "worker_runtime_seconds": 4800,
+      "profile": "benchmarks/profiles/vliw-audit/vliw-audit-n3-codex-gpt-5-6-sol-2h-k4-c1.json",
+      "conditions": [
+        "N3"
+      ],
+      "campaign_id_template": "local-vliw-audit-n3-codex-2h-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": [
+          "goal-plus-codex"
+        ],
+        "conditions": [
+          "N3"
+        ],
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1,
+        "worker_runtime_seconds": 4800
+      }
+    },
+    {
       "id": "local-vliw-audit-pilot-30m",
       "description": "Audit N0v/N1/N2 local VLIW Phase 0 pilot: matched deepseek-v4-flash medium, T=30m, K=4, C=1, R=1.",
       "benchmarks": [
