@@ -6,18 +6,20 @@ from pathlib import Path
 from typing import Any
 
 
-def apply_sampling_params(
-    registry: dict[str, Any], *, temperature: float = 0.0
+def apply_sampling_seed(
+    registry: dict[str, Any], *, seed: int = 1
 ) -> dict[str, Any]:
-    """Make an isolated Pi registry reproducible for benchmark comparisons.
+    """Pin the provider sampling seed without flattening model diversity.
 
     Pi merges ``samplingParams`` into the provider request.  The registry is
     benchmark-owned and written to the run directory, so this does not mutate
-    the user's Pi home or a shared provider catalog.
+    the user's Pi home or a shared provider catalog.  Temperature is left at
+    the model/provider default on purpose: forcing it to zero would make
+    concurrent candidates produce nearly identical outputs.
     """
 
-    if temperature < 0:
-        raise ValueError("sampling temperature must be non-negative")
+    if isinstance(seed, bool) or not isinstance(seed, int) or seed < 0:
+        raise ValueError("sampling seed must be a non-negative integer")
     providers = registry.get("providers")
     if not isinstance(providers, dict):
         return registry
@@ -32,7 +34,7 @@ def apply_sampling_params(
                 continue
             params = model.get("samplingParams")
             merged = dict(params) if isinstance(params, dict) else {}
-            merged["temperature"] = temperature
+            merged["seed"] = seed
             model["samplingParams"] = merged
     return registry
 

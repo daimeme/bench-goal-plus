@@ -46,5 +46,5 @@
   "worker_min_verifier_runs": 1,
   "closeout_reserve_seconds": 600,
   "deterministic": true,
-  "sampling_temperature": 0.0
+  "sampling_seed": 1
 }

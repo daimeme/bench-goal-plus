@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from bench_runtime_paths import configure_temp_environment
-from bench_goal_plus.pi_models import apply_sampling_params
+from bench_goal_plus.pi_models import apply_sampling_seed
 from bench_goal_plus.sat_contract import sat_controller_environment
 
 from . import io
@@ -802,9 +802,9 @@ def prepare_pi_provider_runtime(
         runtime_dir.mkdir(parents=True, exist_ok=True)
         resources.pi_models_file = runtime_dir / "pi-models.json"
         if profile.get("deterministic", False):
-            registry = apply_sampling_params(
+            registry = apply_sampling_seed(
                 registry,
-                temperature=float(profile.get("sampling_temperature", 0.0)),
+                seed=int(profile.get("sampling_seed", 1)),
             )
         io.write_json(resources.pi_models_file, registry)
         resources.pi_models_file.chmod(0o600)

@@ -170,6 +170,8 @@ class SatVliwProfileTest(unittest.TestCase):
         self.assertEqual(edge["worker_min_verifier_runs"], 1)
         self.assertEqual(edge["closeout_reserve_seconds"], 600)
         self.assertTrue(edge["deterministic"])
+        self.assertEqual(edge["sampling_seed"], 1)
+        self.assertNotIn("sampling_temperature", edge)
 
     def test_n3_closure_preset_is_available(self) -> None:
         self.assertTrue(CONDITIONS["N3"].implemented)
