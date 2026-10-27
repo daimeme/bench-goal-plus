@@ -2022,6 +2022,54 @@
         "cell_concurrency": 1,
         "worker_runtime_seconds": 1500
       }
+    },
+    {
+      "id": "edgebench-vliw-collab-c0-codex-2h",
+      "description": "VLIW collaboration arm C0 with Goal Plus + Codex, gpt-5.6-sol medium reasoning, no post-settlement deliberation, T=7200, K=4, C=1, R=1.",
+      "benchmarks": ["edgebench"],
+      "profile": "vliw-collab-c0-codex-gpt-5-6-sol-2h-k4-c1",
+      "campaign_id_template": "edgebench-vliw-collab-c0-codex-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": ["goal-plus-codex"],
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1
+      }
+    },
+    {
+      "id": "edgebench-vliw-collab-c1-codex-2h",
+      "description": "VLIW collaboration arm C1 with Goal Plus + Codex, gpt-5.6-sol medium reasoning, advisory P1/P2/P3 deliberation with mechanistic_step_audit, T=7200, K=4, C=1, R=1.",
+      "benchmarks": ["edgebench"],
+      "profile": "vliw-collab-c1-codex-gpt-5-6-sol-2h-k4-c1",
+      "campaign_id_template": "edgebench-vliw-collab-c1-codex-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": ["goal-plus-codex"],
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1
+      }
+    },
+    {
+      "id": "edgebench-vliw-collab-c2-codex-2h",
+      "description": "VLIW collaboration arm C2 with Goal Plus + Codex, gpt-5.6-sol medium reasoning, advisory P1/P2/P3 deliberation with the full 10-strategy bank, T=7200, K=4, C=1, R=1.",
+      "benchmarks": ["edgebench"],
+      "profile": "vliw-collab-c2-codex-gpt-5-6-sol-2h-k4-c1",
+      "campaign_id_template": "edgebench-vliw-collab-c2-codex-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": ["goal-plus-codex"],
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1
+      }
     }
   ]
 }

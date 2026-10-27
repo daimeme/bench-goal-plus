@@ -70,6 +70,8 @@ def sat_metrics_from_archive(archive_path: Path) -> dict[str, Any]:
     collaboration_claims = 0
     collaboration_claim_statuses: Counter[str] = Counter()
     collaboration_peer_audits = 0
+    deliberation_turn_payloads: list[dict[str, Any]] = []
+    deliberation_verdict_payloads: list[dict[str, Any]] = []
     audit_briefs = 0
     audit_brief_statuses: Counter[str] = Counter()
     audit_defect_kinds: Counter[str] = Counter()
@@ -93,6 +95,11 @@ def sat_metrics_from_archive(archive_path: Path) -> dict[str, Any]:
                     or name.endswith("/collaboration/events.jsonl")
                     or (
                         "/collaboration/certificates/" in name
+                        and name.endswith(".json")
+                    )
+                    or name.endswith("/collaboration/turns.jsonl")
+                    or (
+                        "/collaboration/verdicts/" in name
                         and name.endswith(".json")
                     )
                     or ("/audit/briefs/" in name and name.endswith(".json"))
@@ -181,6 +188,12 @@ def sat_metrics_from_archive(archive_path: Path) -> dict[str, Any]:
                     audits = certificate.get("peer_audits")
                     if isinstance(audits, list):
                         collaboration_peer_audits += len(audits)
+                elif name.endswith("/collaboration/turns.jsonl"):
+                    deliberation_turn_payloads.extend(_jsonl(payload))
+                elif "/collaboration/verdicts/" in name and name.endswith(".json"):
+                    verdict = _json(payload)
+                    if verdict:
+                        deliberation_verdict_payloads.append(verdict)
                 elif "/audit/briefs/" in name and name.endswith(".json"):
                     brief = _json(payload)
                     if not brief:
@@ -246,6 +259,26 @@ def sat_metrics_from_archive(archive_path: Path) -> dict[str, Any]:
         for key in SAT_DIAGNOSTIC_SCORE_KEYS
         if score_counts.get(key)
     }
+    deliberation_completed = sum(
+        1
+        for item in deliberation_verdict_payloads
+        if item.get("status") == "completed"
+    )
+    deliberation_failed = sum(
+        1
+        for item in deliberation_verdict_payloads
+        if item.get("status") == "failed"
+    )
+    deliberation_turn_findings = sum(
+        len(item.get("findings") or [])
+        for item in deliberation_turn_payloads
+        if isinstance(item.get("findings"), list)
+    )
+    deliberation_unresolved_risks = sum(
+        len(item.get("unresolved_risks") or [])
+        for item in deliberation_verdict_payloads
+        if isinstance(item.get("unresolved_risks"), list)
+    )
     audit_delivered = sum(
         audit_brief_statuses[status]
         for status in {"delivered", "accepted", "ignored", "rebutted"}
@@ -289,6 +322,18 @@ def sat_metrics_from_archive(archive_path: Path) -> dict[str, Any]:
             sorted(collaboration_claim_statuses.items())
         ),
         "collaboration_peer_audits": collaboration_peer_audits,
+        "deliberation_status": (
+            "present"
+            if deliberation_turn_payloads or deliberation_verdict_payloads
+            else "absent"
+        ),
+        "deliberation_turns": len(deliberation_turn_payloads),
+        "deliberation_verdicts": len(deliberation_verdict_payloads),
+        "deliberation_completed": deliberation_completed,
+        "deliberation_failed": deliberation_failed,
+        "deliberation_recommendations": deliberation_completed,
+        "deliberation_turn_findings": deliberation_turn_findings,
+        "deliberation_unresolved_risks": deliberation_unresolved_risks,
         "audit_briefs": audit_briefs,
         "audit_briefs_pending": audit_brief_statuses.get("pending", 0),
         "audit_briefs_delivered": audit_delivered,

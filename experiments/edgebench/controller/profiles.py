@@ -11,6 +11,10 @@ import yaml
 from . import io
 from .asset_issues import excluded_task_issues
 from .context import current_paths
+from bench_goal_plus.collaboration_contract import (
+    COLLABORATION_MODES,
+    expected_condition as expected_collaboration_condition,
+)
 from bench_goal_plus.sat_contract import (
     SAT_EXPERIMENT_MODES,
     expected_global_evidence_mode,
@@ -245,6 +249,27 @@ def load_profile(value: str | Path) -> tuple[Path, dict[str, Any]]:
         profile["task_assets_dir"] = str((paths.root / assets).resolve())
     goal_plus_methods = set(profile["methods"]) & GOAL_PLUS_METHODS
     if goal_plus_methods:
+        collaboration_mode = profile.get("collaboration_mode")
+        if collaboration_mode is not None:
+            if collaboration_mode not in COLLABORATION_MODES:
+                raise ValueError(
+                    "collaboration_mode must be one of "
+                    + ", ".join(COLLABORATION_MODES)
+                )
+            if profile.get("experiment_mode") is not None:
+                raise ValueError(
+                    "collaboration_mode cannot be combined with experiment_mode: "
+                    "the C and A/N arms use different controller overlays"
+                )
+            if len(profile["methods"]) != 1:
+                raise ValueError(
+                    "a collaboration EdgeBench profile must contain exactly one method"
+                )
+            if profile["task_ids"] != ["vliw_kernel_optimization"]:
+                raise ValueError(
+                    "collaboration EdgeBench profiles run exactly the VLIW task"
+                )
+            expected_collaboration_condition(collaboration_mode)
         experiment_mode = profile.get("experiment_mode")
         if experiment_mode is not None:
             if experiment_mode not in SAT_EXPERIMENT_MODES:

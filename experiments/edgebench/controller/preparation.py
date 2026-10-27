@@ -11,6 +11,10 @@ from bench_goal_plus.goal_plus_command import (
     goal_plus_command_config,
     goal_plus_entrypoint,
 )
+from bench_goal_plus.collaboration_contract import (
+    collaboration_controller_environment,
+    require_collaboration_controller,
+)
 from bench_goal_plus.sat_contract import (
     require_sat_controller_experiment,
     sat_controller_environment,
@@ -133,6 +137,7 @@ def prepare(args: argparse.Namespace, profile: dict[str, Any]) -> Path:
     if api_protocol == "pi-provider":
         validate_pi_provider_model(model)
     experiment_mode = profile.get("experiment_mode")
+    collaboration_mode = profile.get("collaboration_mode")
     requested_reasoning = getattr(args, "reasoning_effort", None)
     if requested_reasoning is not None:
         reasoning = requested_reasoning
@@ -243,6 +248,10 @@ def prepare(args: argparse.Namespace, profile: dict[str, Any]) -> Path:
         if experiment_mode:
             require_sat_controller_experiment(
                 Path(str(goal_plus_source["source_dir"])), experiment_mode
+            )
+        if collaboration_mode:
+            require_collaboration_controller(
+                Path(str(goal_plus_source["source_dir"])), str(collaboration_mode)
             )
     profile_protocol_overrides = dict(profile.get("protocol_overrides") or {})
     allowed_protocol_override_fields = ALLOWED_PROTOCOL_OVERRIDE_FIELDS | set(
@@ -411,6 +420,18 @@ def prepare(args: argparse.Namespace, profile: dict[str, Any]) -> Path:
                                     }
                                 }
                                 if experiment_mode is not None
+                                else {}
+                            ),
+                            **(
+                                {
+                                    "collaboration": {
+                                        "mode": collaboration_mode,
+                                        "controller_env": collaboration_controller_environment(
+                                            str(collaboration_mode)
+                                        ),
+                                    }
+                                }
+                                if collaboration_mode is not None
                                 else {}
                             ),
                         }

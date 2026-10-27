@@ -30,13 +30,18 @@ AIME-2024 bank 的 10 条策略。协作结论只写 `.gp/runs/<run>/collaborati
 
 ## 3. 条件设计
 
-三个条件共用 `goal-plus-pi`、`parallel_loops`、same model/reasoning、`T=7200`、`K=4`、`C=1`：
+**主路径是 EdgeBench native（官方 hidden Judge 判分）**：`goal-plus-codex` + `gpt-5.6-sol`
+medium reasoning，`edgebench-official-codex` 协议，`T=7200`、`K=4`、`C=1`、R 用 campaign 重复。
+三个条件只差协作臂：
 
 | 条件 | 协作 | 策略 | 每题协作调用量（估） | 作用 |
 | --- | --- | --- | ---: | --- |
-| **C0** | 无 | — | 0 | 基线：与不加该特性时逐字节相同 |
+| **C0** | 无 | — | 0 | 基线：控制器不导出任何协作变量 |
 | **C1** | advisory | `mechanistic_step_audit` 1 条 | 9 | 机制检验：最小、最便宜的审计回路 |
 | **C2** | advisory | 完整 10 条 bank | ~90 | 覆盖率检验：多策略组合是否带来额外识别 |
+
+本地 `local-vliw` 上还提供 `goal-plus-pi` 的 C0/C1/C2（matrix 一次跑三条件），只用于接线与
+成本 sanity，不作为效应量来源；两套 profile 的 `collaboration_mode` 与控制器环境完全一致。
 
 C1 与 C2 的差是"策略条数"的边际价值；C0 与 C1 的差是"有没有协作"的总效应。三者都保持
 hard-score 选择不变，所以任何收益只能来自"候选池里的正确答案被更早/更准地识别"。
@@ -85,31 +90,40 @@ hard-score 选择不变，所以任何收益只能来自"候选池里的正确�
 
 | 阶段 | 预设 | 条件 | 预算 | 目的 |
 | --- | --- | --- | --- | --- |
-| P0 wiring | `local-vliw-collab-pilot-30m` | C0/C1 | T=1800 | 接线与成本 sanity，不出效应量 |
-| P1 主实验 | `local-vliw-collab-matrix-2h` | C0/C1/C2 | T=7200 | 一次 campaign 跑满三个条件 |
-| P1 复跑 | `local-vliw-collab-c{0,1,2}-2h` | 单臂 | T=7200 | 逐臂复跑或补齐失败 cell |
-| P2 官方判分 | `edgebench-vliw-collab-*`（待接） | C0/C1 | T=7200 | 用 EdgeBench hidden judge 复核 |
+| P0 接线 | `local-vliw-collab-pilot-30m` | C0/C1 | T=1800 | 本地接线与成本 sanity，不出效应量 |
+| P1 主实验 | `edgebench-vliw-collab-c{0,1,2}-codex-2h` | 每 arm 一个 campaign | T=7200 | **官方 hidden Judge 判分**，Codex + gpt-5.6-sol |
+| P2 复跑 | 同 P1，换 `--campaign-id` | 同上 | T=7200 | 每个 arm 3 个 campaign 得到 R=3 |
+| 可选 | `local-vliw-collab-matrix-2h` | C0/C1/C2 | T=7200 | 无 Docker 时的并行机制对照 |
 
-命令（在 `bench-goal-plus` 根目录）：
+命令（在 `bench-goal-plus` 根目录；EdgeBench 需要 Linux + Docker + Codex 鉴权）：
 
 ```bash
 export SFORGE_GOAL_PLUS_SOURCE_DIR=/path/to/muyuan/plugins/goal-plus
 export SFORGE_GOAL_PLUS_EXPECTED_REF=<sat-bank 的 commit>
-export DEEPSEEK_API_KEY=...
 
+# P0：先确认控制器链路（本地 VLIW，不需要 Docker）
 python3 scripts/bench.py check --preset local-vliw-collab-pilot-30m
 python3 scripts/bench.py setup --preset local-vliw-collab-pilot-30m
 python3 scripts/bench.py plan  --preset local-vliw-collab-pilot-30m
 python3 scripts/bench.py launch --preset local-vliw-collab-pilot-30m
 
-# P1：一次 campaign，三条件 × 1 task × 1 seed；seed 复跑三次得到 R=3
+# P1：EdgeBench 官方判分，每 arm 一个 campaign，串行跑 3 个重复
 for r in 1 2 3; do
-  python3 scripts/bench.py launch --preset local-vliw-collab-matrix-2h \
-    --campaign-id "local-vliw-collab-matrix-r${r}"
-  python3 scripts/bench.py status --campaign "runs/benchmark-campaigns/local-vliw-collab-matrix-r${r}"
-  python3 scripts/bench.py finish --campaign "runs/benchmark-campaigns/local-vliw-collab-matrix-r${r}"
+  for arm in c0 c1 c2; do
+    python3 scripts/bench.py check  --preset "edgebench-vliw-collab-${arm}-codex-2h"
+    python3 scripts/bench.py setup  --preset "edgebench-vliw-collab-${arm}-codex-2h"
+    python3 scripts/bench.py plan   --preset "edgebench-vliw-collab-${arm}-codex-2h"
+    python3 scripts/bench.py launch --preset "edgebench-vliw-collab-${arm}-codex-2h" \
+      --campaign-id "edgebench-vliw-collab-${arm}-codex-r${r}"
+    python3 scripts/bench.py status --campaign "runs/edgebench/edgebench-vliw-collab-${arm}-codex-r${r}"
+    python3 scripts/bench.py finish --campaign "runs/edgebench/edgebench-vliw-collab-${arm}-codex-r${r}"
+  done
 done
 ```
+
+`check` 必须只报告镜像/依赖缺口，不能报 `selected Goal Plus source has a controller overlay
+without collaboration support`；出现后者说明 `SFORGE_GOAL_PLUS_SOURCE_DIR` 指到了旧的 `sat` 分支。
+每个 campaign 到终态后再 `finish`，不要并发跑同一 arm 的多个 campaign。
 
 ## 7. 证据与产物
 

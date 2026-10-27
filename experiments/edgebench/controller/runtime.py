@@ -297,6 +297,11 @@ def cell_environment(
                 "1" if cell.get("supplemental_evaluation_enabled", False) else "0"
             ),
         }
+        collaboration = cell.get("collaboration") or {}
+        if collaboration.get("controller_env"):
+            extra_env.update(dict(collaboration["controller_env"]))
+        else:
+            extra_env.pop("GOAL_PLUS_CONTROLLER_COLLABORATION", None)
         if sat_mode:
             extra_env.update(sat_controller_environment(str(sat_mode)))
         else:
