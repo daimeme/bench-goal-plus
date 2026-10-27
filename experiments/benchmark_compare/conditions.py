@@ -9,6 +9,7 @@ from typing import Literal
 ConditionId = Literal[
     "B0", "B1", "B2", "B3", "B4", "A1", "A2", "A3", "A4", "A5",
     "N0", "N0v", "N1", "N2", "N3",
+    "C0", "C1", "C2",
 ]
 CoordinationVariant = Literal["way0", "way1", "way2"]
 
@@ -29,6 +30,7 @@ class Condition:
     limitation: str | None = None
     sat_experiment_mode: str | None = None
     sat_protocol: str | None = None
+    collaboration_mode: str | None = None
 
     def effective_concurrency(self, requested: int) -> int:
         if requested < 1:
@@ -51,6 +53,7 @@ class Condition:
             "limitation": self.limitation,
             "sat_experiment_mode": self.sat_experiment_mode,
             "sat_protocol": self.sat_protocol,
+            "collaboration_mode": self.collaboration_mode,
         }
 
 
@@ -132,6 +135,22 @@ CONDITIONS: dict[ConditionId, Condition] = {
         "N3", "goal-plus-pi", True, False, False, False, False, True,
         None, None, True, None, "n3", None
     ),
+    # Post-settlement group-deliberation arms. All three keep the same
+    # parallel_loops topology, T, K and C; only the advisory P1/P2/P3
+    # deliberation arm changes. C0 sends no controller overlay at all, so it
+    # stays the untouched Goal Plus baseline on this source branch.
+    "C0": Condition(
+        "C0", "goal-plus-pi", True, False, False, False, False, True,
+        None, None, True, None, None, None, "c0"
+    ),
+    "C1": Condition(
+        "C1", "goal-plus-pi", True, False, False, False, False, True,
+        None, None, True, None, None, None, "c1"
+    ),
+    "C2": Condition(
+        "C2", "goal-plus-pi", True, False, False, False, False, True,
+        None, None, True, None, None, None, "c2"
+    ),
 }
 
 VARIANT_LIMITATIONS: dict[CoordinationVariant, str | None] = {
@@ -177,6 +196,7 @@ def resolve_condition(
     if condition.condition_id in {
         "B1", "B3", "B4", "A1", "A2", "A3", "A4", "A5",
         "N0", "N0v", "N1", "N2", "N3",
+        "C0", "C1", "C2",
     } and concurrency < 2:
         raise ValueError(f"{condition.condition_id} requires --concurrency >= 2")
     if coordination_variant is not None:

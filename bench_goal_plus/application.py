@@ -359,6 +359,7 @@ class BenchmarkAgent:
                 condition in {
                     "A1", "A2", "A3", "A4", "A5",
                     "N0", "N0v", "N1", "N2", "N3",
+                    "C0", "C1", "C2",
                 }
                 for condition in selected_conditions
             )
@@ -385,6 +386,7 @@ class BenchmarkAgent:
                 if condition not in {
                     "B3", "B4", "A1", "A2", "A3", "A4", "A5",
                     "N0", "N0v", "N1", "N2", "N3",
+                    "C0", "C1", "C2",
                 }
             ]
             if (

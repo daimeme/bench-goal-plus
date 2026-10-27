@@ -29,6 +29,10 @@ from bench_artifacts import (  # noqa: E402
     write_json_atomic as write_json,
 )
 from bench_runtime_paths import configure_temp_environment  # noqa: E402
+from bench_goal_plus.collaboration_contract import (  # noqa: E402
+    COLLABORATION_CONTROLLER_ENV,
+    collaboration_controller_environment,
+)
 from bench_goal_plus.goal_plus_evidence import (  # noqa: E402
     aggregate_sat_metrics,
     merge_sat_aggregates,
@@ -240,6 +244,9 @@ def prepare_campaign(args: argparse.Namespace) -> int:
                     "coordination_variant": (
                         condition.coordination_variant if condition is not None else None
                     ),
+                    "collaboration_mode": (
+                        condition.collaboration_mode if condition is not None else None
+                    ),
                     "method": method,
                     "seed": seed,
                     "effective_concurrency": (
@@ -356,6 +363,14 @@ def launch_cell(
     environment.pop("OPENAI_API_BASE_URL", None)
     if api_base:
         environment[PI_API_BASE_RUNTIME_ENV] = api_base
+    # The controller owns the deliberation arm: the agent's own spec text can
+    # neither opt in nor opt out. C0 sends nothing, so the baseline stays
+    # byte-identical to a run without the feature.
+    environment.update(
+        collaboration_controller_environment(cell.get("collaboration_mode"))
+    )
+    if not cell.get("collaboration_mode"):
+        environment.pop(COLLABORATION_CONTROLLER_ENV, None)
     process = subprocess.Popen(
         cell_run_command(args, cell),
         cwd=ROOT,

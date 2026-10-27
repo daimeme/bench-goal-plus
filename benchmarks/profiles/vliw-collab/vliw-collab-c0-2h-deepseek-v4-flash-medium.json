@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "id": "vliw-collab-c0-2h-deepseek-v4-flash-medium",
+  "benchmark": "local-vliw",
+  "task_ids": ["vliw_kernel_optimization"],
+  "methods": ["goal-plus-pi"],
+  "conditions": ["C0"],
+  "model": "deepseek-v4-flash",
+  "reasoning_effort": "medium",
+  "wall_time_seconds": 7200,
+  "concurrency": 4,
+  "cell_concurrency": 1,
+  "worker_runtime_seconds": 6600,
+  "collaboration_mode": "c0"
+}

@@ -1927,6 +1927,101 @@
         "concurrency": 4,
         "cell_concurrency": 1
       }
+    },
+    {
+      "id": "local-vliw-collab-c0-2h",
+      "description": "VLIW collaboration arm C0: Goal Plus parallel_loops baseline with no post-settlement deliberation, T=7200, K=4, C=1, R=1.",
+      "benchmarks": ["local-vliw"],
+      "profile": "benchmarks/profiles/vliw-collab/vliw-collab-c0-2h-deepseek-v4-flash-medium.json",
+      "conditions": ["C0"],
+      "campaign_id_template": "local-vliw-collab-c0-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": ["goal-plus-pi"],
+        "conditions": ["C0"],
+        "model": "deepseek-v4-flash",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1,
+        "worker_runtime_seconds": 6600
+      }
+    },
+    {
+      "id": "local-vliw-collab-c1-2h",
+      "description": "VLIW collaboration arm C1: advisory P1/P2/P3 deliberation with the single mechanistic_step_audit strategy, T=7200, K=4, C=1, R=1.",
+      "benchmarks": ["local-vliw"],
+      "profile": "benchmarks/profiles/vliw-collab/vliw-collab-c1-2h-deepseek-v4-flash-medium.json",
+      "conditions": ["C1"],
+      "campaign_id_template": "local-vliw-collab-c1-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": ["goal-plus-pi"],
+        "conditions": ["C1"],
+        "model": "deepseek-v4-flash",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1,
+        "worker_runtime_seconds": 6600
+      }
+    },
+    {
+      "id": "local-vliw-collab-c2-2h",
+      "description": "VLIW collaboration arm C2: advisory P1/P2/P3 deliberation with the full 10-strategy SAT math bank, T=7200, K=4, C=1, R=1.",
+      "benchmarks": ["local-vliw"],
+      "profile": "benchmarks/profiles/vliw-collab/vliw-collab-c2-2h-deepseek-v4-flash-medium.json",
+      "conditions": ["C2"],
+      "campaign_id_template": "local-vliw-collab-c2-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": ["goal-plus-pi"],
+        "conditions": ["C2"],
+        "model": "deepseek-v4-flash",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1,
+        "worker_runtime_seconds": 6600
+      }
+    },
+    {
+      "id": "local-vliw-collab-matrix-2h",
+      "description": "VLIW collaboration campaign: C0/C1/C2 in one campaign, one cell per condition and seed, T=7200, K=4, C=1.",
+      "benchmarks": ["local-vliw"],
+      "profile": "benchmarks/profiles/vliw-collab/vliw-collab-matrix-2h-deepseek-v4-flash-medium.json",
+      "conditions": ["C0", "C1", "C2"],
+      "campaign_id_template": "local-vliw-collab-matrix-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": ["goal-plus-pi"],
+        "conditions": ["C0", "C1", "C2"],
+        "model": "deepseek-v4-flash",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1,
+        "worker_runtime_seconds": 6600
+      }
+    },
+    {
+      "id": "local-vliw-collab-pilot-30m",
+      "description": "VLIW collaboration pilot: C0/C1 at T=1800 for wiring and cost sanity only; not an effect-size measurement.",
+      "benchmarks": ["local-vliw"],
+      "profile": "benchmarks/profiles/vliw-collab/vliw-collab-pilot-30m-deepseek-v4-flash-medium.json",
+      "conditions": ["C0", "C1"],
+      "campaign_id_template": "local-vliw-collab-pilot-k4-c1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": ["goal-plus-pi"],
+        "conditions": ["C0", "C1"],
+        "model": "deepseek-v4-flash",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 1800,
+        "concurrency": 4,
+        "cell_concurrency": 1,
+        "worker_runtime_seconds": 1500
+      }
     }
   ]
 }

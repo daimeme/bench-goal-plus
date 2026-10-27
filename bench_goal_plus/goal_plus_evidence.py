@@ -345,6 +345,73 @@ def collaboration_snapshot(run_dir: Path) -> dict[str, Any]:
     }
 
 
+def deliberation_snapshot(run_dir: Path) -> dict[str, Any]:
+    """Read the post-settlement group deliberation artifacts.
+
+    The collaboration stage writes append-only turns plus one verdict per
+    deliberation identity under ``.gp/runs/<run_id>/collaboration/``. Older
+    runtimes have no such files; they report an explicit empty ledger.
+    """
+
+    root = run_dir / "collaboration"
+    turns = _read_jsonl(root / "turns.jsonl")
+    verdicts = [
+        payload
+        for path in sorted((root / "verdicts").glob("*.json"))
+        for payload in [_read_json(path)]
+        if payload
+    ]
+    phase_counts = Counter(str(turn.get("phase_id") or "unknown") for turn in turns)
+    strategy_counts = Counter(str(turn.get("strategy_id") or "unknown") for turn in turns)
+    findings = sum(
+        len(turn.get("findings") or [])
+        for turn in turns
+        if isinstance(turn.get("findings"), list)
+    )
+    completed = [item for item in verdicts if item.get("status") == "completed"]
+    failed = [item for item in verdicts if item.get("status") == "failed"]
+    confidences = [
+        float(item["confidence"])
+        for item in completed
+        if isinstance(item.get("confidence"), (int, float))
+    ]
+    status = "present" if turns or verdicts else "absent"
+    return {
+        "status": status,
+        "protocol": next(
+            (
+                item.get("protocol")
+                for item in [*turns, *verdicts]
+                if isinstance(item.get("protocol"), str)
+            ),
+            "sat-gp/deliberation/v1",
+        ),
+        "turns": len(turns),
+        "verdicts": len(verdicts),
+        "completed": len(completed),
+        "failed": len(failed),
+        "recommendations": sum(
+            1 for item in completed if item.get("recommended_candidate_id")
+        ),
+        "confidence_mean": (
+            round(_mean_known(confidences) or 0.0, 6) if confidences else None
+        ),
+        "turn_findings": findings,
+        "unresolved_risks": sum(
+            len(item.get("unresolved_risks") or [])
+            for item in verdicts
+            if isinstance(item.get("unresolved_risks"), list)
+        ),
+        "phase_counts": dict(sorted(phase_counts.items())),
+        "strategy_counts": dict(sorted(strategy_counts.items())),
+        "failure_reasons": [
+            str(item.get("failure_reason"))
+            for item in failed
+            if item.get("failure_reason")
+        ][:8],
+    }
+
+
 def steering_snapshot(run_dir: Path) -> dict[str, Any]:
     """Summarize SAT verifier/steering artifacts for one Search run."""
 
@@ -592,6 +659,7 @@ def sat_metrics(run_dir: Path) -> dict[str, Any]:
         "evidence": global_evidence_reads(run_dir),
         "shared_cache": shared_cache_snapshot(run_dir),
         "collaboration": collaboration_snapshot(run_dir),
+        "deliberation": deliberation_snapshot(run_dir),
         "audit": audit_snapshot(run_dir),
     }
 
@@ -620,6 +688,13 @@ SAT_METRIC_FIELDS = (
     "collaboration_claims",
     "collaboration_peer_audits",
     "collaboration_evidence_reads",
+    "deliberation_turns",
+    "deliberation_verdicts",
+    "deliberation_completed",
+    "deliberation_failed",
+    "deliberation_recommendations",
+    "deliberation_turn_findings",
+    "deliberation_unresolved_risks",
     "audit_briefs",
     "audit_briefs_pending",
     "audit_briefs_delivered",
@@ -664,6 +739,7 @@ def aggregate_sat_metrics(items: list[dict[str, Any]]) -> dict[str, Any]:
     observations: dict[str, int] = {}
     diagnostic_actions: dict[str, int] = {}
     collaboration_status = "absent"
+    deliberation_status = "absent"
     audit_status = "absent"
     audit_defect_kinds: dict[str, int] = {}
     for item in items:
@@ -734,6 +810,22 @@ def aggregate_sat_metrics(items: list[dict[str, Any]]) -> dict[str, Any]:
         )
         if collaboration.get("status") == "present":
             collaboration_status = "present"
+        deliberation = item.get("deliberation") or {}
+        metrics["deliberation_turns"] += int(deliberation.get("turns") or 0)
+        metrics["deliberation_verdicts"] += int(deliberation.get("verdicts") or 0)
+        metrics["deliberation_completed"] += int(deliberation.get("completed") or 0)
+        metrics["deliberation_failed"] += int(deliberation.get("failed") or 0)
+        metrics["deliberation_recommendations"] += int(
+            deliberation.get("recommendations") or 0
+        )
+        metrics["deliberation_turn_findings"] += int(
+            deliberation.get("turn_findings") or 0
+        )
+        metrics["deliberation_unresolved_risks"] += int(
+            deliberation.get("unresolved_risks") or 0
+        )
+        if deliberation.get("status") == "present":
+            deliberation_status = "present"
         metrics["audit_briefs"] += int(audit.get("briefs_total") or 0)
         metrics["audit_briefs_pending"] += int(audit.get("briefs_pending") or 0)
         metrics["audit_briefs_delivered"] += int(audit.get("briefs_delivered") or 0)
@@ -777,6 +869,7 @@ def aggregate_sat_metrics(items: list[dict[str, Any]]) -> dict[str, Any]:
         "metrics": metrics,
         "runs_with_sat": len(items),
         "collaboration_status": collaboration_status,
+        "deliberation_status": deliberation_status,
         "audit_status": audit_status,
         "audit_defect_kinds": dict(sorted(audit_defect_kinds.items())),
         "audit_delivery_rate": (
@@ -819,6 +912,7 @@ def merge_sat_aggregates(items: list[dict[str, Any]]) -> dict[str, Any]:
     observations: dict[str, int] = {}
     diagnostic_actions: dict[str, int] = {}
     collaboration_status = "absent"
+    deliberation_status = "absent"
     audit_status = "absent"
     audit_defect_kinds: dict[str, int] = {}
     for item in known:
@@ -827,6 +921,8 @@ def merge_sat_aggregates(items: list[dict[str, Any]]) -> dict[str, Any]:
                 metrics[key] += int(value or 0)
         if item.get("collaboration_status") == "present":
             collaboration_status = "present"
+        if item.get("deliberation_status") == "present":
+            deliberation_status = "present"
         if item.get("audit_status") == "present":
             audit_status = "present"
         for kind, count in (item.get("audit_defect_kinds") or {}).items():
@@ -852,6 +948,7 @@ def merge_sat_aggregates(items: list[dict[str, Any]]) -> dict[str, Any]:
         "metrics": metrics,
         "runs_with_sat": sum(int(item.get("runs_with_sat") or 0) for item in known),
         "collaboration_status": collaboration_status,
+        "deliberation_status": deliberation_status,
         "audit_status": audit_status,
         "audit_defect_kinds": dict(sorted(audit_defect_kinds.items())),
         "audit_delivery_rate": (
