@@ -422,6 +422,7 @@ def prepare(args: argparse.Namespace, profile: dict[str, Any]) -> Path:
                                 if experiment_mode is not None
                                 else {}
                             ),
+                            "worker_sandbox_mode": profile.get("worker_sandbox_mode"),
                             **(
                                 {
                                     "collaboration": {

@@ -15,6 +15,7 @@
   ],
   "model": "gpt-5.6-sol",
   "collaboration_mode": "c1",
+  "worker_sandbox_mode": "danger-full-access",
   "reasoning_effort": "medium",
   "wall_time_seconds": 7200,
   "concurrency": 4,

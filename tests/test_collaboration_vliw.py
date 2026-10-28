@@ -1,4 +1,4 @@
-﻿import json
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -146,6 +146,25 @@ class CollaborationProfileValidationTest(unittest.TestCase):
             )
             with self.assertRaises(ValueError):
                 load_profile(target)
+
+    def test_worker_sandbox_mode_is_validated_and_kept(self) -> None:
+        from experiments.edgebench.controller.profiles import load_profile
+
+        with tempfile.TemporaryDirectory() as directory:
+            ok = Path(directory) / "ok.json"
+            ok.write_text(
+                json.dumps(self._profile(worker_sandbox_mode="danger-full-access")),
+                encoding="utf-8",
+            )
+            _, profile = load_profile(ok)
+            self.assertEqual(profile["worker_sandbox_mode"], "danger-full-access")
+
+            bad = Path(directory) / "bad.json"
+            bad.write_text(
+                json.dumps(self._profile(worker_sandbox_mode="off")), encoding="utf-8"
+            )
+            with self.assertRaises(ValueError):
+                load_profile(bad)
 
 
 if __name__ == "__main__":

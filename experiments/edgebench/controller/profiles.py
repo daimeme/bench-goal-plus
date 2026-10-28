@@ -249,6 +249,16 @@ def load_profile(value: str | Path) -> tuple[Path, dict[str, Any]]:
         profile["task_assets_dir"] = str((paths.root / assets).resolve())
     goal_plus_methods = set(profile["methods"]) & GOAL_PLUS_METHODS
     if goal_plus_methods:
+        worker_sandbox = profile.get("worker_sandbox_mode")
+        if worker_sandbox is not None and worker_sandbox not in {
+            "workspace-write",
+            "read-only",
+            "danger-full-access",
+        }:
+            raise ValueError(
+                "worker_sandbox_mode must be one of workspace-write, read-only, "
+                "danger-full-access"
+            )
         collaboration_mode = profile.get("collaboration_mode")
         if collaboration_mode is not None:
             if collaboration_mode not in COLLABORATION_MODES:

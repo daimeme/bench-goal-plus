@@ -136,6 +136,30 @@ without collaboration support`；出现后者说明 `SFORGE_GOAL_PLUS_SOURCE_DIR
 
 判定必须基于 `finish` 后的 `campaign-summary.json` 与 `.gp` 原始 verdict；partial cell 只进机制表。
 
+## 7b. 重跑前置：worker shell 与池内改判空间
+
+上一轮三次运行里 4 个候选只有 1 个真正迭代，另外 3 个停在 baseline，原因是 EdgeBench
+容器缺少 unprivileged user namespace，Codex 自己那层沙箱起不来，worker 的每条 shell 都失败。
+C 系列 profile 现在显式关闭 Codex 侧沙箱（边界移到 task 容器）：
+
+```json
+"worker_sandbox_mode": "danger-full-access"
+```
+
+它只影响 Codex candidate 线程，不改变 Goal Plus 的 `allowed_files` / `denied_files` 与冻结
+verifier。对应 upstream 变量是 `GOAL_PLUS_CODEX_WORKER_SANDBOX`（默认 `workspace-write`）。
+
+重跑后先确认池子是否真的有改判空间：
+
+```bash
+python3 scripts/check_pool_headroom.py runs/edgebench/<campaign>
+# exit 0 + "OK: every pool has at least two improving candidates" 才进入主比较
+# exit 1 说明仍只有一个候选在改进：cell 记 partial，先修 sandbox / 预算，别报分数
+```
+
+判定口径：至少两个候选的最优分低于 baseline，且前两名相对差 ≤25%；否则 hard-score
+选择本来就没有可判空间，协作层的任何结论都不可解释。
+
 ## 8. 已知限制（必须在报告里写清）
 
 1. **同质三 agent**：三个槽位共用 main 模型，只有角色与提示不同。论文的异质 roster 收益

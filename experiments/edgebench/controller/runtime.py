@@ -297,6 +297,11 @@ def cell_environment(
                 "1" if cell.get("supplemental_evaluation_enabled", False) else "0"
             ),
         }
+        worker_sandbox = cell.get("worker_sandbox_mode")
+        if worker_sandbox:
+            extra_env["GOAL_PLUS_CODEX_WORKER_SANDBOX"] = str(worker_sandbox)
+        else:
+            extra_env.pop("GOAL_PLUS_CODEX_WORKER_SANDBOX", None)
         collaboration = cell.get("collaboration") or {}
         if collaboration.get("controller_env"):
             extra_env.update(dict(collaboration["controller_env"]))
