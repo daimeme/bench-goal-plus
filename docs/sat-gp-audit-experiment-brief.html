@@ -172,9 +172,9 @@ code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em;
       <span class="chip">实验方案 + 当前结果</span>
       <span class="chip">EdgeBench VLIW · 官方 Judge</span>
       <span class="chip">N0 / N0v / N1 / N2 / N3</span>
-      <span class="chip">T=2h · K=4 · C=1 · R=3</span>
+      <span class="chip">T=2h · K=4 · C=1 · R=3 target</span>
       <span class="chip">Pi / Codex 分开</span>
-      <span class="chip warn">已有 N0–N3 数据 · N3 audit 0 brief</span>
+      <span class="chip warn">2026-10-27 · N0 1298 · 7 briefs / 0 credential</span>
     </div>
   </div>
 </header>
@@ -512,75 +512,76 @@ code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em;
   <h2>六、实验结果</h2>
 
   <div class="status-banner">
-    <div class="status-kicker">Current status · 2026-10-23</div>
-    <div class="status-title">执行链路已跑通，audit 仍未形成可投递信号</div>
-    <p>已有两批 N0–N3 数据：2026-10-22 的 N0/N0v/N1/N3 全为 partial，N2 invalid；2026-10-23 重跑的 N3 已 completed（4+1 workers、12 verifier runs、Judge 81.63），但只有 2 条 clean audit、0 brief、0 credential。因此下表报告数据与描述性差值，不把 N3 的分数变化写成 audit 因果效应。</p>
+    <div class="status-kicker">Current status · 2026-10-27</div>
+    <div class="status-title">第一组完整 N0–N3 Codex 矩阵：执行有效，audit 处理仍不完整</div>
+    <p>2026-10-27 的 Codex 批次已完成 5 个 arm：全部 completion evidence 通过，K=4 实际为 4 个 bound worker。N0 最好（1298 cycles / 82.60），N0v 最差（1441 / 75.62）。但 audit 仍未被完整执行：N1 的 3 条 shadow brief 全不投递，N2 的 3 条中 2 条 delivered、0 accepted/credential，N3 只有 1 条 pending、0 delivered。R=1，不能把分数排序写成 audit 因果效应。</p>
   </div>
 
   <h3>6.1 数据批次与有效性</h3>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Arm</th><th>运行</th><th>状态</th><th>Judge 0–100</th><th>raw cycles</th><th>completion</th><th>workers (actual)</th><th>verifier runs</th><th>audit 记录 (ok/fail)</th><th>cost</th></tr></thead>
+      <thead><tr><th>Arm</th><th>campaign</th><th class="num">raw cycles</th><th class="num">Judge</th><th class="num">runtime</th><th class="num">budget</th><th class="num">eval</th><th class="num">verifier records</th><th>briefs (prod / deliv)</th><th>completion</th></tr></thead>
       <tbody>
-        <tr><td>N0</td><td>2026-10-22</td><td><span class="tag pending">partial</span></td><td>77.36</td><td>1404</td><td>false</td><td>0</td><td>0</td><td>0 / 0</td><td>$0.169</td></tr>
-        <tr><td>N0v</td><td>2026-10-22</td><td><span class="tag pending">partial</span></td><td>78.80</td><td>1374</td><td>false</td><td>0</td><td>0</td><td>0 / 0</td><td>$0.197</td></tr>
-        <tr><td>N1</td><td>2026-10-22</td><td><span class="tag pending">partial</span></td><td>87.17</td><td>1212</td><td>false</td><td>0</td><td>0</td><td>0 / 0</td><td>$0.168</td></tr>
-        <tr><td>N2</td><td>2026-10-22</td><td><span class="tag none">invalid</span></td><td>—</td><td>—</td><td>false</td><td>0</td><td>—</td><td>— / —</td><td>—</td></tr>
-        <tr><td>N3</td><td>2026-10-22</td><td><span class="tag pending">partial</span></td><td>76.46</td><td>1423</td><td>false</td><td>0</td><td>0</td><td>0 / 0</td><td>$0.170</td></tr>
-        <tr><td>N3</td><td>2026-10-23</td><td><span class="tag ok">completed</span></td><td>81.63</td><td>1317</td><td>true</td><td>5</td><td>12</td><td>2 / 10</td><td>$0.179</td></tr>
+        <tr><td><strong>N0</strong></td><td><code>edgebench-vliw-audit-n0-codex-r4</code></td><td class="num">1298</td><td class="num">82.60</td><td class="num">6170s</td><td class="num">85.7%</td><td class="num">20</td><td class="num">0</td><td>0 / 0</td><td><span class="tag ok">pass</span></td></tr>
+        <tr><td><strong>N0v</strong></td><td><code>edgebench-vliw-audit-n0v-codex-r4</code></td><td class="num">1441</td><td class="num">75.62</td><td class="num">4836s</td><td class="num">67.2%</td><td class="num">15</td><td class="num">7</td><td>0 / 0</td><td><span class="tag ok">pass</span></td></tr>
+        <tr><td><strong>N1</strong></td><td><code>edgebench-vliw-audit-n1-codex-r4</code></td><td class="num">1354</td><td class="num">79.78</td><td class="num">2943s</td><td class="num">40.9%</td><td class="num">9</td><td class="num">8</td><td>3 / 0</td><td><span class="tag ok">pass</span></td></tr>
+        <tr><td><strong>N2</strong></td><td><code>edgebench-vliw-audit-n2-codex-r7</code></td><td class="num">1400</td><td class="num">77.55</td><td class="num">5967s</td><td class="num">82.9%</td><td class="num">18</td><td class="num">6</td><td>3 / 2</td><td><span class="tag ok">pass</span></td></tr>
+        <tr><td><strong>N3</strong></td><td><code>edgebench-vliw-audit-n3-codex-r5</code></td><td class="num">1378</td><td class="num">78.60</td><td class="num">7884s</td><td class="num">109.5%</td><td class="num">24</td><td class="num">6</td><td>1 / 0</td><td><span class="tag ok">pass</span></td></tr>
       </tbody>
     </table>
   </div>
-  <p class="result-table-note">所有运行均为 <code>official_edgebench_comparable=false</code>；Judge 分只是内部 0–100。旧 N0/N0v/N1/N3 全部 partial，N2 invalid；2026-10-23 N3 是唯一 completion evidence 通过的 run。两批代码/时长不同，不能作为配对因果比较。</p>
+  <p class="result-table-note">全部为 <code>K=4</code>、<code>C=1</code>、<code>R=1</code>；<code>official_edgebench_comparable=false</code>，Judge 只是内部 0–100。N3 的 7884s 包含 900s finalization grace；探索 T 仍为 7200s。所有 arm 的 completion evidence 均通过。</p>
 
   <h3>6.2 表 R1 · 机制计数</h3>
   <div class="table-wrap">
     <table>
       <thead><tr><th>Arm</th><th>Briefs</th><th>Delivered</th><th>Accepted</th><th>Ignored</th><th>Rebutted</th><th>Verified</th><th>Rejected</th><th>Delivery rate</th></tr></thead>
       <tbody>
+        <tr><td>N0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>—</td></tr>
         <tr><td>N0v</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>—</td></tr>
-        <tr><td>N1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0（设计）</td></tr>
-        <tr><td>N2</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—（invalid）</td></tr>
-        <tr><td>N3 · 10-22</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>—</td></tr>
-        <tr><td>N3 · 10-23</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>—（0 brief）</td></tr>
+        <tr><td>N1 · shadow</td><td>3</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.0</td></tr>
+        <tr><td>N2 · apply</td><td>3</td><td>2</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>66.7%</td></tr>
+        <tr><td>N3 · closure</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.0</td></tr>
       </tbody>
     </table>
   </div>
-  <p class="result-table-note">10-23 N3 实际有 2 条 completed audit，但两条均为 <code>defects=[]</code>；broker 对 clean audit 返回 <code>None</code>，所以没有 brief。0 brief 不等于 0 次审计，但确实没有 delivery/repair 可测。</p>
+  <p class="result-table-note">N1 的 0 delivery 是 shadow 设计，不是失败。N2 的 <code>audit_closure=false</code>，本来就不要求 accepted；它的 2 条 delivered 是唯一进入行为观察的 brief。N3 的 1 条 brief 仍 pending，因此没有 response/credential。</p>
 
   <h3>6.3 表 R2 · 描述性差值（非配对因果）</h3>
   <div class="table-wrap">
     <table>
       <thead><tr><th>对比</th><th>n pairs</th><th>Mean Δ Judge</th><th>Bootstrap 95% CI</th><th>MDE</th><th>方向 / 解释</th></tr></thead>
       <tbody>
-        <tr><td>N1 − N0v</td><td>1</td><td>+8.37</td><td>—</td><td>—</td><td>↑，但 audit 未执行</td></tr>
-        <tr><td>N2 − N1</td><td>—</td><td>—</td><td>—</td><td>—</td><td>n/a，N2 invalid</td></tr>
-        <tr><td>N3(10-22) − N2</td><td>—</td><td>—</td><td>—</td><td>—</td><td>n/a，N2 invalid</td></tr>
-        <tr><td>N3(10-22) − N0v</td><td>1</td><td>−2.34</td><td>—</td><td>—</td><td>↓，旧 N3 partial</td></tr>
-        <tr><td>N3(10-23) − N3(10-22)</td><td>1</td><td>+5.17</td><td>—</td><td>—</td><td>↑，执行修复，非 audit</td></tr>
-        <tr><td>N3(10-23) − N0v</td><td>1</td><td>+2.83</td><td>—</td><td>—</td><td>↑，跨批次，不配对</td></tr>
-        <tr><td>N0v − N0</td><td>1</td><td>+1.44</td><td>—</td><td>—</td><td>↑，verifier 算力对照</td></tr>
+        <tr><td>N1 − N0v</td><td>1</td><td>+4.16</td><td>—</td><td>—</td><td>↑，但 shadow brief 未投递，不能归因 audit</td></tr>
+        <tr><td>N2 − N1</td><td>1</td><td>−2.23</td><td>—</td><td>—</td><td>↓；N2 有 2 条 delivered，但无 accepted/credential</td></tr>
+        <tr><td>N3 − N2</td><td>1</td><td>+1.06</td><td>—</td><td>—</td><td>↑；N3 的 brief 仍 pending，不是 closure 效应</td></tr>
+        <tr><td>N2 − N0v</td><td>1</td><td>+1.93</td><td>—</td><td>—</td><td>↑；budget/evals 不同，不能当 audit 归因</td></tr>
+        <tr><td>N0v − N0</td><td>1</td><td>−6.97</td><td>—</td><td>—</td><td>↓；verifier-only 控制，但 N0v 只用了 67.2% 预算</td></tr>
       </tbody>
     </table>
   </div>
-  <p class="result-table-note">全部为 R=1；没有重复，因此没有 CI/MDE。<code>n=1</code> 只表示一个 task×run，不是统计配对样本。</p>
+  <p class="result-table-note">全部为 R=1；没有重复，因此没有 CI/MDE。<code>n=1</code> 只表示一个 task×run，不是统计配对样本。N0 的 1298 来自 c002 的 6 次迭代，不是“无 audit 更优”的证明。</p>
 
   <h3>6.4 表 R3 · 审计质量与行为</h3>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Arm</th><th>audit 记录 (ok/fail)</th><th>Precision</th><th>Coverage</th><th>Uptake</th><th>Repair lift</th><th>Harm</th><th>Cost Δ</th></tr></thead>
+      <thead><tr><th>Arm</th><th>audit 记录 (ok/fail)</th><th>完成率</th><th>briefs</th><th>delivered</th><th>accepted</th><th>credentials</th><th>说明</th></tr></thead>
       <tbody>
-        <tr><td>N1 · 10-22</td><td>0 / 0</td><td>—</td><td>0</td><td>—</td><td>—</td><td>—</td><td>−$0.029</td></tr>
-        <tr><td>N2 · 10-22</td><td>— / —</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—（invalid）</td></tr>
-        <tr><td>N3 · 10-22</td><td>0 / 0</td><td>—</td><td>0</td><td>—</td><td>—</td><td>—</td><td>−$0.027</td></tr>
-        <tr><td>N3 · 10-23</td><td>2 / 10</td><td>—</td><td>2/12 (16.7%)</td><td>0</td><td>—</td><td>—</td><td>−$0.018</td></tr>
+        <tr><td>N1 · shadow</td><td>6 / 2</td><td>75.0%</td><td>3</td><td>0</td><td>0</td><td>0</td><td>只生产；3 条 pending</td></tr>
+        <tr><td>N2 · apply</td><td>3 / 3</td><td>50.0%</td><td>3</td><td>2</td><td>0</td><td>0</td><td>closure off；accepted 不适用</td></tr>
+        <tr><td>N3 · closure</td><td>2 / 4</td><td>33.3%</td><td>1</td><td>0</td><td>0</td><td>0</td><td>brief 仍 pending，未进入 response</td></tr>
+        <tr><td><strong>合计</strong></td><td><strong>11 / 9</strong></td><td><strong>55.0%</strong></td><td><strong>7</strong></td><td><strong>2</strong></td><td><strong>0</strong></td><td><strong>0</strong></td><td>reference closure 失败仍是主要 producer 问题</td></tr>
       </tbody>
     </table>
   </div>
-  <p class="result-table-note">N3 10-23 的 precision/repair lift 仍不可计算：0 brief；coverage 指 audit 完成率，不是缺陷 precision。Cost Δ 相对 N0v，仅为描述值。</p>
+  <p class="result-table-note">Precision、repair lift、harm 仍不可计算：N1 无 delivery，N2 无 closure，N3 无 delivery；且当前没有独立 defect 标签。9 条失败主要是 <code>diagnostic reference</code> / <code>audit claim reference</code>，不再是 scope prose。</p>
 
   <div class="callout amber">
-    <strong>N3 10-23 的真实状态：</strong>12 条 LLM verifier 记录中只有 2 条 completed（16.7%），10 条 failed；2 条 completed 均为 clean audit。最终 1317 cycles 来自 c001 iteration 6，而该次 audit 失败（<code>diagnostic reference is outside the immutable input</code>）。因此 81.63 不能归因于 audit。
+    <strong>N2 的唯一时序线索：</strong>c001 iteration 2 是 1950 cycles，brief 在 13:30 delivered，iteration 3 在 14:09 变为 1400 cycles。时间顺序符合 audit 影响，但没有 accepted/rebutted、没有 credential；iteration 3 的 summary 是 scheduler 优化，不是 brief 要求的 shape matrix。因此这只是值得复测的线索，不是 audit 有效的证据。
+  </div>
+
+  <div class="callout amber">
+    <strong>当前结论只能到这里：</strong>2026-10-27 批次是首个五臂完整矩阵：N0 1298 / 82.60 最好，N0v 1441 / 75.62 最差，N1/N2/N3 在 1354–1400 cycles 之间。audit 生产已出现（7 briefs），但只有 2 条 delivered、0 accepted、0 credential；N3 closure 未执行。因此不能声称 audit 提高了 Judge 或降低了 cycles。
   </div>
 
   <h3>6.5 结果判定规则</h3>
@@ -591,39 +592,34 @@ code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em;
         <tr><td><strong>H1 审计生产</strong></td><td>N1 相对 N0v 产出可定位缺陷；precision/coverage 过冻结阈值；harm 未系统性恶化。</td><td>修 producer、task reference 或 defect taxonomy；不进入投递归因。</td></tr>
         <tr><td><strong>H2 投递</strong></td><td>N2−N1 的 official score 按赛事方向改善且 CI 支持；delivery/uptake 与分数方向一致。</td><td>先查 delivery 与 uptake，再查 brief 是否可执行；不更换主终点。</td></tr>
         <tr><td><strong>H3 闭环</strong></td><td>N3−N2 的 verified rate &gt; 0，repair lift 大于 harm；回执没有诱导过度修复。</td><td>查 credential 关闭条件与回执行为；报告负结果。</td></tr>
-        <tr><td><strong>H0 算力</strong> <span class="tag base">optional</span></td><td>N0v−N0 用于解释 verifier 调用本身的成本；不替代审计归因。</td><td>只报告成本，不推断审计效果。</td></tr>
       </tbody>
     </table>
-  </div>
-
-  <div class="callout amber">
-    <strong>当前结论只能到这里：</strong>执行链路已修复，N3 10-23 已 completed，1317 cycles / 81.63 分；但 12 条 audit 记录只有 2 条 completed、0 条带 defect、0 brief、0 credential。旧 N0/N0v/N1/N3 partial，N2 invalid。因此现在仍不能声称 audit 提高了 accuracy、降低了 cycles，或闭环修复了具体 defect。
   </div>
 </section>
 
 <section class="section" id="conclusion">
   <h2>七、结论边界与下一步</h2>
-  <p class="lead">把“现在能说什么”和“现在不能说什么”分开，是这份文档最重要的约束。机制可运行不等于机制有效；机制有效也不等于可以外推到 SAT 的团队协作。</p>
+  <p class="lead">把“现在能说什么”和“现在不能说什么”分开，是这份文档最重要的约束。10-27 批次已经跑通执行链路，但 audit treatment 仍未完整执行。</p>
 
   <div class="grid">
     <div class="card span-6">
       <div class="num">Can claim now</div>
       <h3>现在可以说的</h3>
       <ul>
-        <li>N3 10-23 已 completed：4+1 workers、12 verifier runs、1317 cycles、81.63 分。</li>
-        <li>FrozenSpec 确实写入了 <code>audit_briefs=apply</code> 与 <code>audit_closure=true</code>，overlay 没有被绕过。</li>
-        <li>N3 选中 c001（1317 cycles），是当时候选池中的最好候选；selection 没有选错。</li>
-        <li>N3 的 12 条 LLM verifier 记录中 2 条 audit completed、10 条 failed，最终 0 brief、0 credential。</li>
+        <li>2026-10-27 N0–N3 五臂全部 completion pass，K=4 实际为 4 个 bound worker。</li>
+        <li>N0 1298 / 82.60 最好；N0v 1441 / 75.62 最差；N1 1354、N3 1378、N2 1400。</li>
+        <li>N1 shadow 产出 3 条 brief、0 delivered；N2 产出 3 条、2 delivered；N3 1 条 pending、0 delivered。</li>
+        <li>Audit producer 已有产出，但 0 accepted、0 credential；N3 closure 没有执行样本。</li>
       </ul>
     </div>
     <div class="card span-6">
       <div class="num">Cannot claim yet</div>
       <h3>现在不能说的</h3>
       <ul>
-        <li>audit 提高了 VLIW 的 Judge 分或降低了 cycles；0 brief 无法支持这个结论。</li>
-        <li>N3 从 76.46 到 81.63 是 audit 的收益；这次同时修复了 worker 启动与 lease。</li>
-        <li>N3−N2 的闭环效应；N2 无有效分数，N3 也没有可投递 brief。</li>
-        <li>旧 N1 的 87.17 是 audit 收益；N1 的 audit briefs 同样为 0。</li>
+        <li>audit 提高了 VLIW Judge 或降低了 cycles：N2/N3 的 delivery/response 都不完整。</li>
+        <li>N0 的 1298 是“无 audit 更优”：它来自 c002 的 6 次迭代，R=1 且预算/搜索路径不同。</li>
+        <li>N0v 的 1441 是 verifier 有害：N0v 只用了 67.2% 预算、15 次 evaluator call。</li>
+        <li>N2 的 1950→1400 是 audit 修复：没有 response/credential，next iteration 的 summary 是 scheduler 优化。</li>
       </ul>
     </div>
   </div>
@@ -632,29 +628,29 @@ code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em;
   <div class="steps">
     <div class="step">
       <div>
-        <h3>先修 audit producer</h3>
-        <p>当前 10/12 失败；优先修 <code>scope</code> 必须取 <code>audit_references</code> 精确 key、diagnostics 的 principal hypothesis 绑定，以及 SIGTERM 对应的 verifier timeout/cancel。</p>
-        <div class="evidence">出口：audit completion rate 达到可接受水平</div>
+        <h3>刷新到 75d0fba 并重跑 N2/N3</h3>
+        <p>新插件已把 apply 限制为单条 defect，并为 N3 预留 600s bounded repair turn；bench profile 已更新。旧 N2/N3 只能作为 pilot。</p>
+        <div class="evidence">出口：N3 delivered &gt; 0、responded &gt; 0、credential &gt; 0</div>
       </div>
     </div>
     <div class="step">
       <div>
-        <h3>跑 N3 smoke，过机制门禁</h3>
-        <p>确认 N3 至少产生 1 条带 defect 的 brief，候选能 respond，并在下一次 hard settlement 产生 credential；否则分数没有解释力。</p>
-        <div class="evidence">出口：brief &gt; 0、response &gt; 0、credential &gt; 0</div>
+        <h3>同批 R=3 重跑机制矩阵</h3>
+        <p>N0v/N1/N2/N3 使用同一 harness commit、同一 T/K/C/R；N1 也重跑，因为 producer evidence_refs 规则已变化。</p>
+        <div class="evidence">出口：配对效应、CI、MDE 与机制计数一致</div>
       </div>
     </div>
     <div class="step">
       <div>
-        <h3>再跑配对矩阵</h3>
-        <p>同一代码、同一 T/K/C、N0v/N1/N2/N3 分开跑，R=3；先看 H1/H2/H3 的机制，再看配对分数与 CI。</p>
-        <div class="evidence">出口：配对效应、成本、正负结果</div>
+        <h3>再决定 audit 的去留</h3>
+        <p>先看 N2−N1 的 delivery/artifact change，再看 N3−N2 的 response/credential；机制不成立时不解释分数。</p>
+        <div class="evidence">出口：保留、收窄或舍弃 audit；不更换主终点</div>
       </div>
     </div>
   </div>
 
   <div class="callout green">
-    <strong>决策规则：</strong>如果 N2−N1 正向且机制一致，审计投递值得保留；如果 N3−N2 只在 verified rate 上有效、分数无变化，说明闭环改善了可观测性但没有改善答案；如果 N2−N1 无效，优先修 delivery/uptake，而不是改主终点或扩大预算。
+    <strong>决策规则：</strong>如果 N2−N1 正向且 delivery/uptake 一致，审计投递值得保留；如果 N3−N2 只有 verified rate 有效、分数无变化，说明闭环改善了可观测性但没有改善答案；如果 N2−N1 无效，优先修 delivery/uptake，而不是改主终点或扩大预算。
   </div>
 </section>
 
@@ -663,7 +659,7 @@ code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em;
 <footer class="footer">
   <div class="wrap row">
     <span>SAT → Goal-Plus 审计迁移 · 实验方案与当前结果</span>
-    <span>N0–N3 已有数据；N3 10-23 completed，audit 0 brief · EdgeBench VLIW · Pi/Codex 分开</span>
+    <span>2026-10-27 Codex R=1：N0 1298 · 5 个 arm completion pass · 7 briefs / 0 credential</span>
   </div>
 </footer>
 </body>
