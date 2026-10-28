@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "benchmark": "local-vliw",
+  "description": "Audit N2 local VLIW: single actionable defect, delivery-only, no closure.",
   "task_ids": [
     "vliw_kernel_optimization"
   ],

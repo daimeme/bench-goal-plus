@@ -1215,7 +1215,7 @@
     },
     {
       "id": "local-vliw-audit-n2-2h",
-      "description": "Audit N2 local VLIW: Goal Plus + Pi, deepseek-v4-flash medium, T=2h, K=4, C=1, R=1.",
+      "description": "Audit N2 local VLIW: Goal Plus + Pi, deepseek-v4-flash medium, T=2h, K=4, C=1, R=1; single actionable defect, delivery-only.",
       "benchmarks": [
         "local-vliw"
       ],
@@ -1380,7 +1380,7 @@
     },
     {
       "id": "local-vliw-audit-n2-codex-2h",
-      "description": "Audit N2 local VLIW: Goal Plus + Codex, gpt-5.6-sol medium, T=2h, K=4, C=1, R=1.",
+      "description": "Audit N2 local VLIW: Goal Plus + Codex, gpt-5.6-sol medium, T=2h, K=4, C=1, R=1; single actionable defect, delivery-only.",
       "benchmarks": [
         "local-vliw"
       ],
@@ -1413,7 +1413,7 @@
     },
     {
       "id": "local-vliw-audit-n3-codex-2h",
-      "description": "Audit N3 local VLIW: Goal Plus + Codex, gpt-5.6-sol medium, T=2h, K=4, C=1, R=1.",
+      "description": "Audit N3 local VLIW: Goal Plus + Codex, gpt-5.6-sol medium, T=2h, K=4, C=1, R=1; single actionable defect, closure, one bounded repair turn with 600s reserve.",
       "benchmarks": [
         "local-vliw"
       ],
@@ -1582,7 +1582,7 @@
     },
     {
       "id": "edgebench-vliw-audit-n2-2h",
-      "description": "VLIW audit arm N2 (canonical Pi + DeepSeek v4 flash): Goal Plus + Pi provider, deepseek/deepseek-v4-flash, T=7200, K=4, C=1, R=1.",
+      "description": "VLIW audit arm N2 (canonical Pi + DeepSeek v4 flash): Goal Plus + Pi provider, deepseek/deepseek-v4-flash, T=7200, K=4, C=1, R=1; single actionable defect, delivery-only.",
       "benchmarks": [
         "edgebench"
       ],
@@ -1602,7 +1602,7 @@
     },
     {
       "id": "edgebench-vliw-audit-n3-2h",
-      "description": "VLIW audit arm N3 (canonical Pi + DeepSeek v4 flash): Goal Plus + Pi provider, deepseek/deepseek-v4-flash, T=7200, K=4, C=1, R=1.",
+      "description": "VLIW audit arm N3 (canonical Pi + DeepSeek v4 flash): Goal Plus + Pi provider, deepseek/deepseek-v4-flash, T=7200, K=4, C=1, R=1; single actionable defect, closure, one bounded repair turn with 600s reserve.",
       "benchmarks": [
         "edgebench"
       ],
@@ -1742,7 +1742,7 @@
     },
     {
       "id": "edgebench-vliw-audit-n2-pi-2h",
-      "description": "VLIW audit arm N2 with Goal Plus + Pi provider, deepseek/deepseek-v4-flash, T=7200, K=4, C=1, R=1.",
+      "description": "VLIW audit arm N2 with Goal Plus + Pi provider, deepseek/deepseek-v4-flash, T=7200, K=4, C=1, R=1; single actionable defect, delivery-only.",
       "benchmarks": [
         "edgebench"
       ],
@@ -1762,7 +1762,7 @@
     },
     {
       "id": "edgebench-vliw-audit-n2-codex-2h",
-      "description": "VLIW audit arm N2 with Goal Plus + Codex, gpt-5.6-sol, T=7200, K=4, C=1, R=1.",
+      "description": "VLIW audit arm N2 with Goal Plus + Codex, gpt-5.6-sol, T=7200, K=4, C=1, R=1; single actionable defect, delivery-only.",
       "benchmarks": [
         "edgebench"
       ],
@@ -1863,7 +1863,7 @@
     },
     {
       "id": "local-vliw-audit-n3-2h",
-      "description": "Audit N3 local VLIW: Goal Plus + Pi closure, deepseek-v4-flash medium, T=2h, K=4, C=1, R=1.",
+      "description": "Audit N3 local VLIW: Goal Plus + Pi closure, deepseek-v4-flash medium, T=2h, K=4, C=1, R=1; single actionable defect, one bounded repair turn with 600s reserve.",
       "benchmarks": [
         "local-vliw"
       ],
@@ -1890,7 +1890,7 @@
     },
     {
       "id": "edgebench-vliw-audit-n3-pi-2h",
-      "description": "VLIW audit arm N3 with Goal Plus + Pi provider, closure, deepseek/deepseek-v4-flash, T=7200, K=4, C=1, R=1.",
+      "description": "VLIW audit arm N3 with Goal Plus + Pi provider, closure, deepseek/deepseek-v4-flash, T=7200, K=4, C=1, R=1; single actionable defect, one bounded repair turn with 600s reserve.",
       "benchmarks": [
         "edgebench"
       ],
@@ -1910,7 +1910,7 @@
     },
     {
       "id": "edgebench-vliw-audit-n3-codex-2h",
-      "description": "VLIW audit arm N3 with Goal Plus + Codex, closure, gpt-5.6-sol, T=7200, K=4, C=1, R=1.",
+      "description": "VLIW audit arm N3 with Goal Plus + Codex, closure, gpt-5.6-sol, T=7200, K=4, C=1, R=1; single actionable defect, one bounded repair turn with 600s reserve.",
       "benchmarks": [
         "edgebench"
       ],
