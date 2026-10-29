@@ -174,7 +174,7 @@ code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em;
       <span class="chip">N0 / N0v / N1 / N2 / N3</span>
       <span class="chip">T=2h · K=4 · C=1 · R=3 target</span>
       <span class="chip">Pi / Codex 分开</span>
-      <span class="chip warn">2026-10-27 · N0 1298 · 7 briefs / 0 credential</span>
+      <span class="chip warn">2026-10-29 · N2 1351 / N3 1379 · 1 verified repair</span>
     </div>
   </div>
 </header>
@@ -512,76 +512,80 @@ code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em;
   <h2>六、实验结果</h2>
 
   <div class="status-banner">
-    <div class="status-kicker">Current status · 2026-10-27</div>
-    <div class="status-title">第一组完整 N0–N3 Codex 矩阵：执行有效，audit 处理仍不完整</div>
-    <p>2026-10-27 的 Codex 批次已完成 5 个 arm：全部 completion evidence 通过，K=4 实际为 4 个 bound worker。N0 最好（1298 cycles / 82.60），N0v 最差（1441 / 75.62）。但 audit 仍未被完整执行：N1 的 3 条 shadow brief 全不投递，N2 的 3 条中 2 条 delivered、0 accepted/credential，N3 只有 1 条 pending、0 delivered。R=1，不能把分数排序写成 audit 因果效应。</p>
+    <div class="status-kicker">Current status · 2026-10-29</div>
+    <div class="status-title">N3 closure 首次真正执行：1 accepted / 1 verified credential；但 N2 仍少 28 cycles</div>
+    <p>最新 N2/N3 Codex 重跑（goal-plus <code>235e935</code>、harness <code>a690808</code>）两臂都 completion pass，K=4。N2 1351 cycles / 79.93，N3 1379 / 78.56；N2 比 N3 少 28 cycles。N3 首次跑出完整闭环：10/10 audit、6 delivered、1 accepted、4 rebutted、4 pending，1 个 credential 被真实 hard settlement 验证；c004 从 1543 降到 1379（−164 cycles）。但 N3 的修复没有让最终结果超过 N2，R=1 下 28 cycles 不能当因果效应。</p>
   </div>
 
   <h3>6.1 数据批次与有效性</h3>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Arm</th><th>campaign</th><th class="num">raw cycles</th><th class="num">Judge</th><th class="num">runtime</th><th class="num">budget</th><th class="num">eval</th><th class="num">verifier records</th><th>briefs (prod / deliv)</th><th>completion</th></tr></thead>
+      <thead><tr><th>Arm</th><th>batch</th><th>campaign</th><th class="num">raw cycles</th><th class="num">Judge</th><th class="num">runtime</th><th class="num">budget</th><th class="num">eval</th><th class="num">verifier records</th><th>briefs (prod / deliv)</th><th>completion</th></tr></thead>
       <tbody>
-        <tr><td><strong>N0</strong></td><td><code>edgebench-vliw-audit-n0-codex-r4</code></td><td class="num">1298</td><td class="num">82.60</td><td class="num">6170s</td><td class="num">85.7%</td><td class="num">20</td><td class="num">0</td><td>0 / 0</td><td><span class="tag ok">pass</span></td></tr>
-        <tr><td><strong>N0v</strong></td><td><code>edgebench-vliw-audit-n0v-codex-r4</code></td><td class="num">1441</td><td class="num">75.62</td><td class="num">4836s</td><td class="num">67.2%</td><td class="num">15</td><td class="num">7</td><td>0 / 0</td><td><span class="tag ok">pass</span></td></tr>
-        <tr><td><strong>N1</strong></td><td><code>edgebench-vliw-audit-n1-codex-r4</code></td><td class="num">1354</td><td class="num">79.78</td><td class="num">2943s</td><td class="num">40.9%</td><td class="num">9</td><td class="num">8</td><td>3 / 0</td><td><span class="tag ok">pass</span></td></tr>
-        <tr><td><strong>N2</strong></td><td><code>edgebench-vliw-audit-n2-codex-r7</code></td><td class="num">1400</td><td class="num">77.55</td><td class="num">5967s</td><td class="num">82.9%</td><td class="num">18</td><td class="num">6</td><td>3 / 2</td><td><span class="tag ok">pass</span></td></tr>
-        <tr><td><strong>N3</strong></td><td><code>edgebench-vliw-audit-n3-codex-r5</code></td><td class="num">1378</td><td class="num">78.60</td><td class="num">7884s</td><td class="num">109.5%</td><td class="num">24</td><td class="num">6</td><td>1 / 0</td><td><span class="tag ok">pass</span></td></tr>
+        <tr><td><strong>N0</strong></td><td>10-27</td><td><code>edgebench-vliw-audit-n0-codex-r4</code></td><td class="num">1298</td><td class="num">82.60</td><td class="num">6170s</td><td class="num">85.7%</td><td class="num">20</td><td class="num">0</td><td>0 / 0</td><td><span class="tag ok">pass</span></td></tr>
+        <tr><td><strong>N0v</strong></td><td>10-27</td><td><code>edgebench-vliw-audit-n0v-codex-r4</code></td><td class="num">1441</td><td class="num">75.62</td><td class="num">4836s</td><td class="num">67.2%</td><td class="num">15</td><td class="num">7</td><td>0 / 0</td><td><span class="tag ok">pass</span></td></tr>
+        <tr><td><strong>N1</strong></td><td>10-27</td><td><code>edgebench-vliw-audit-n1-codex-r4</code></td><td class="num">1354</td><td class="num">79.78</td><td class="num">2943s</td><td class="num">40.9%</td><td class="num">9</td><td class="num">8</td><td>3 / 0</td><td><span class="tag ok">pass</span></td></tr>
+        <tr><td><strong>N2</strong></td><td>10-29</td><td><code>edgebench-vliw-audit-n2-codex-r13</code></td><td class="num">1351</td><td class="num">79.93</td><td class="num">7721s</td><td class="num">107.2%</td><td class="num">24</td><td class="num">6</td><td>3 / 2</td><td><span class="tag ok">pass</span></td></tr>
+        <tr><td><strong>N3</strong></td><td>10-29</td><td><code>edgebench-vliw-audit-n3-codex-r12</code></td><td class="num">1379</td><td class="num">78.56</td><td class="num">5425s</td><td class="num">75.3%</td><td class="num">15</td><td class="num">10</td><td>10 / 6</td><td><span class="tag ok">pass</span></td></tr>
       </tbody>
     </table>
   </div>
-  <p class="result-table-note">全部为 <code>K=4</code>、<code>C=1</code>、<code>R=1</code>；<code>official_edgebench_comparable=false</code>，Judge 只是内部 0–100。N3 的 7884s 包含 900s finalization grace；探索 T 仍为 7200s。所有 arm 的 completion evidence 均通过。</p>
+  <p class="result-table-note">全部为 <code>K=4</code>、<code>C=1</code>、<code>R=1</code>；<code>official_edgebench_comparable=false</code>，Judge 只是内部 0–100。N0/N0v/N1 是 10-27 批次；N2/N3 是 10-29 批次，不能当作同一个五臂配对矩阵。N2 的 7721s 超过 T=7200s，包含 finalization grace；探索 cutoff 仍是 T。</p>
 
   <h3>6.2 表 R1 · 机制计数</h3>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Arm</th><th>Briefs</th><th>Delivered</th><th>Accepted</th><th>Ignored</th><th>Rebutted</th><th>Verified</th><th>Rejected</th><th>Delivery rate</th></tr></thead>
+      <thead><tr><th>Arm</th><th>Briefs</th><th>Delivered</th><th>Accepted</th><th>Ignored</th><th>Rebutted</th><th>Pending</th><th>Credentials (verified / rejected)</th><th>Delivery rate</th></tr></thead>
       <tbody>
-        <tr><td>N0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>—</td></tr>
-        <tr><td>N0v</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>—</td></tr>
-        <tr><td>N1 · shadow</td><td>3</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.0</td></tr>
-        <tr><td>N2 · apply</td><td>3</td><td>2</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>66.7%</td></tr>
-        <tr><td>N3 · closure</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0.0</td></tr>
+        <tr><td>N0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0 / 0</td><td>—</td></tr>
+        <tr><td>N0v</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0 / 0</td><td>—</td></tr>
+        <tr><td>N1 · shadow</td><td>3</td><td>0</td><td>0</td><td>0</td><td>0</td><td>3</td><td>0 / 0</td><td>0.0</td></tr>
+        <tr><td>N2 · apply</td><td>3</td><td>2</td><td>0</td><td>0</td><td>0</td><td>1</td><td>0 / 0</td><td>66.7%</td></tr>
+        <tr><td>N3 · closure</td><td>10</td><td>6</td><td>1</td><td>0</td><td>4</td><td>4</td><td>1 / 0</td><td>60.0%</td></tr>
       </tbody>
     </table>
   </div>
-  <p class="result-table-note">N1 的 0 delivery 是 shadow 设计，不是失败。N2 的 <code>audit_closure=false</code>，本来就不要求 accepted；它的 2 条 delivered 是唯一进入行为观察的 brief。N3 的 1 条 brief 仍 pending，因此没有 response/credential。</p>
+  <p class="result-table-note">N2 的 closure 关闭，accepted/credential 本来就不适用；2 条 delivered 中 c001 是 baseline、c004 是 1817 cycles。N3 的 6 条 delivered = 1 accepted + 4 rebutted + 1 delivered 未回答；另有 4 条 pending。N3 的 1 个 credential 已 verified，0 rejected。</p>
 
   <h3>6.3 表 R2 · 描述性差值（非配对因果）</h3>
   <div class="table-wrap">
     <table>
       <thead><tr><th>对比</th><th>n pairs</th><th>Mean Δ Judge</th><th>Bootstrap 95% CI</th><th>MDE</th><th>方向 / 解释</th></tr></thead>
       <tbody>
-        <tr><td>N1 − N0v</td><td>1</td><td>+4.16</td><td>—</td><td>—</td><td>↑，但 shadow brief 未投递，不能归因 audit</td></tr>
-        <tr><td>N2 − N1</td><td>1</td><td>−2.23</td><td>—</td><td>—</td><td>↓；N2 有 2 条 delivered，但无 accepted/credential</td></tr>
-        <tr><td>N3 − N2</td><td>1</td><td>+1.06</td><td>—</td><td>—</td><td>↑；N3 的 brief 仍 pending，不是 closure 效应</td></tr>
-        <tr><td>N2 − N0v</td><td>1</td><td>+1.93</td><td>—</td><td>—</td><td>↑；budget/evals 不同，不能当 audit 归因</td></tr>
-        <tr><td>N0v − N0</td><td>1</td><td>−6.97</td><td>—</td><td>—</td><td>↓；verifier-only 控制，但 N0v 只用了 67.2% 预算</td></tr>
+        <tr><td>N2 − N1</td><td>1</td><td>+0.15</td><td>—</td><td>—</td><td>≈ 持平；N2 1351 vs N1 1354，跨 10-27/10-29 批次</td></tr>
+        <tr><td>N3 − N2</td><td>1</td><td>−1.37</td><td>—</td><td>—</td><td>↓；N3 比 N2 多 28 cycles，closure 未带来最终收益</td></tr>
+        <tr><td>N2 − N0v</td><td>1</td><td>+4.30</td><td>—</td><td>—</td><td>↑；跨批次，且 N0v 只用了 67.2% 预算</td></tr>
+        <tr><td>N3 − N0v</td><td>1</td><td>+2.93</td><td>—</td><td>—</td><td>↑；跨批次，不是 audit 因果</td></tr>
+        <tr><td>N0v − N0</td><td>1</td><td>−6.97</td><td>—</td><td>—</td><td>↓；verifier-only 控制，N0v 预算使用更低</td></tr>
       </tbody>
     </table>
   </div>
-  <p class="result-table-note">全部为 R=1；没有重复，因此没有 CI/MDE。<code>n=1</code> 只表示一个 task×run，不是统计配对样本。N0 的 1298 来自 c002 的 6 次迭代，不是“无 audit 更优”的证明。</p>
+  <p class="result-table-note">全部为 R=1；没有重复，因此没有 CI/MDE。<code>n=1</code> 只表示一个 task×run，不是统计配对样本。N2/N3 的 28 cycles 差值在单次运行噪声内；不能写成“N3 修复无效”或“N2 更好”的确定结论。</p>
 
   <h3>6.4 表 R3 · 审计质量与行为</h3>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Arm</th><th>audit 记录 (ok/fail)</th><th>完成率</th><th>briefs</th><th>delivered</th><th>accepted</th><th>credentials</th><th>说明</th></tr></thead>
+      <thead><tr><th>Arm</th><th>audit 记录 (ok/fail)</th><th>完成率</th><th>briefs</th><th>delivered</th><th>accepted</th><th>rebutted</th><th>pending</th><th>credentials (verified/rejected)</th><th>repair lift</th></tr></thead>
       <tbody>
-        <tr><td>N1 · shadow</td><td>6 / 2</td><td>75.0%</td><td>3</td><td>0</td><td>0</td><td>0</td><td>只生产；3 条 pending</td></tr>
-        <tr><td>N2 · apply</td><td>3 / 3</td><td>50.0%</td><td>3</td><td>2</td><td>0</td><td>0</td><td>closure off；accepted 不适用</td></tr>
-        <tr><td>N3 · closure</td><td>2 / 4</td><td>33.3%</td><td>1</td><td>0</td><td>0</td><td>0</td><td>brief 仍 pending，未进入 response</td></tr>
-        <tr><td><strong>合计</strong></td><td><strong>11 / 9</strong></td><td><strong>55.0%</strong></td><td><strong>7</strong></td><td><strong>2</strong></td><td><strong>0</strong></td><td><strong>0</strong></td><td>reference closure 失败仍是主要 producer 问题</td></tr>
+        <tr><td>N1 · shadow</td><td>6 / 2</td><td>75.0%</td><td>3</td><td>0</td><td>0</td><td>0</td><td>3</td><td>0 / 0</td><td>—</td></tr>
+        <tr><td>N2 · apply</td><td>3 / 3</td><td>50.0%</td><td>3</td><td>2</td><td>0</td><td>0</td><td>1</td><td>0 / 0</td><td>—</td></tr>
+        <tr><td>N3 · closure</td><td>10 / 0</td><td>100.0%</td><td>10</td><td>6</td><td>1</td><td>4</td><td>4</td><td>1 / 0</td><td>−164 cycles（c004 1543→1379）</td></tr>
+        <tr><td><strong>合计</strong></td><td><strong>19 / 5</strong></td><td><strong>79.2%</strong></td><td><strong>16</strong></td><td><strong>8</strong></td><td><strong>1</strong></td><td><strong>4</strong></td><td><strong>8</strong></td><td><strong>1 / 0</strong></td><td>仅 N3 c004 可计算</td></tr>
       </tbody>
     </table>
   </div>
-  <p class="result-table-note">Precision、repair lift、harm 仍不可计算：N1 无 delivery，N2 无 closure，N3 无 delivery；且当前没有独立 defect 标签。9 条失败主要是 <code>diagnostic reference</code> / <code>audit claim reference</code>，不再是 scope prose。</p>
+  <p class="result-table-note">Precision 仍不可计算：没有独立 defect 标签。N3 的 4 条 rebuttal 明确表示 frozen process verifier 只暴露 <code>small_seed_0/1/2</code> 和 <code>main_public_seed_123</code>，无法生成 brief 要求的 per-case evidence；这是 evidence surface/task reference 问题，不是候选无理由拒绝。N3 的 1 条 accepted credential 由后续 hard settlement 验证成功。</p>
 
-  <div class="callout amber">
-    <strong>N2 的唯一时序线索：</strong>c001 iteration 2 是 1950 cycles，brief 在 13:30 delivered，iteration 3 在 14:09 变为 1400 cycles。时间顺序符合 audit 影响，但没有 accepted/rebutted、没有 credential；iteration 3 的 summary 是 scheduler 优化，不是 brief 要求的 shape matrix。因此这只是值得复测的线索，不是 audit 有效的证据。
+  <div class="callout green">
+    <strong>第一个真实 audit 修复：</strong>N3 c004 的 accepted brief 来自 1543 cycles；候选修复后 hard settlement 为 1379 cycles，credential 状态 verified。这是本次迁移第一次出现 <code>accepted → artifact change → hard settlement → verified credential</code> 的完整链路，−164 cycles。
   </div>
 
   <div class="callout amber">
-    <strong>当前结论只能到这里：</strong>2026-10-27 批次是首个五臂完整矩阵：N0 1298 / 82.60 最好，N0v 1441 / 75.62 最差，N1/N2/N3 在 1354–1400 cycles 之间。audit 生产已出现（7 briefs），但只有 2 条 delivered、0 accepted、0 credential；N3 closure 未执行。因此不能声称 audit 提高了 Judge 或降低了 cycles。
+    <strong>但 N3 没有超过 N2：</strong>N2 c004 在没有 closure 的情况下走 147734 → 1817 → 1482 → 1351；N3 c004 走 147734 → 1543 → 1379（repair 后）→ 1379 revert。N3 的修复改善了自己的候选，但 N2 的搜索路径仍然得到更低 cycles（1351 vs 1379）。因此“闭环机制成立”不等于“闭环带来最终收益”。
+  </div>
+
+  <div class="callout amber">
+    <strong>当前结论只能到这里：</strong>N3 已经能完成 10/10 audit、6 delivered、1 accepted、1 verified credential；但最终 N2 1351 比 N3 1379 少 28 cycles，R=1 且两臂不是同一批次。不能声称 audit 提高了 Judge，也不能声称 N3 修复无效：它确实修好了 c004，只是没有超过 N2 的最终候选。
   </div>
 
   <h3>6.5 结果判定规则</h3>
@@ -599,27 +603,29 @@ code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em;
 
 <section class="section" id="conclusion">
   <h2>七、结论边界与下一步</h2>
-  <p class="lead">把“现在能说什么”和“现在不能说什么”分开，是这份文档最重要的约束。10-27 批次已经跑通执行链路，但 audit treatment 仍未完整执行。</p>
+  <p class="lead">10-29 的 N3 已经跑出完整闭环，这是第一次可以讨论“修复是否发生”而不是“brief 是否送达”。但单次 R=1 仍然不能回答“审计是否提高最终分数”。</p>
 
   <div class="grid">
     <div class="card span-6">
       <div class="num">Can claim now</div>
       <h3>现在可以说的</h3>
       <ul>
-        <li>2026-10-27 N0–N3 五臂全部 completion pass，K=4 实际为 4 个 bound worker。</li>
-        <li>N0 1298 / 82.60 最好；N0v 1441 / 75.62 最差；N1 1354、N3 1378、N2 1400。</li>
-        <li>N1 shadow 产出 3 条 brief、0 delivered；N2 产出 3 条、2 delivered；N3 1 条 pending、0 delivered。</li>
-        <li>Audit producer 已有产出，但 0 accepted、0 credential；N3 closure 没有执行样本。</li>
+        <li>N2/N3 两臂 completion pass，K=4；N2 1351 / 79.93，N3 1379 / 78.56，N2 少 28 cycles。</li>
+        <li>N3 实现 10/10 audit、6 delivered、1 accepted、4 rebutted、4 pending；1 个 credential 由 hard settlement verified。</li>
+        <li>N3 c004 经历 1543 → 1379 的 accepted repair，−164 cycles；完整链路真实发生。</li>
+        <li>N2 c004 在无 closure 下走到 1817 → 1482 → 1351；说明候选自身搜索仍可以优于 N3 的修复结果。</li>
+        <li>N3 的 4 条 rebuttal 指出 frozen verifier 只暴露固定 case，无法生成 per-case evidence；这是 evidence surface 问题，不是无理由拒绝。</li>
       </ul>
     </div>
     <div class="card span-6">
       <div class="num">Cannot claim yet</div>
       <h3>现在不能说的</h3>
       <ul>
-        <li>audit 提高了 VLIW Judge 或降低了 cycles：N2/N3 的 delivery/response 都不完整。</li>
-        <li>N0 的 1298 是“无 audit 更优”：它来自 c002 的 6 次迭代，R=1 且预算/搜索路径不同。</li>
-        <li>N0v 的 1441 是 verifier 有害：N0v 只用了 67.2% 预算、15 次 evaluator call。</li>
-        <li>N2 的 1950→1400 是 audit 修复：没有 response/credential，next iteration 的 summary 是 scheduler 优化。</li>
+        <li>N3 的闭环带来了最终收益：N3 1379 比 N2 1351 多 28 cycles，方向相反。</li>
+        <li>audit 提高了 VLIW Judge：R=1，28 cycles 在单次运行噪声内，且 N2/N3 不是同一个五臂批次。</li>
+        <li>N2 的 1351 是 delivered brief 的因果收益：N2 没有 closure/response/credential，无法区分 audit 与自身迭代。</li>
+        <li>N0 的 1298 是“无 audit 更优”：它来自 10-27 批次，c002 走 6 次迭代，预算/路径不同。</li>
+        <li>N3 修复无效：c004 确实被修好并 verified；正确说法是“修复有效，但未超过 N2 的最终候选”。</li>
       </ul>
     </div>
   </div>
@@ -628,29 +634,29 @@ code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em;
   <div class="steps">
     <div class="step">
       <div>
-        <h3>刷新到 235e935 并重跑 N2/N3</h3>
-        <p>235e935 修复 candidate 角色看不到 <code>respond_audit_brief</code> 的根因；75d0fba 已把 apply 限制为单条 defect，并为 N3 预留 600s bounded repair turn。旧 N2/N3 只能作为 pilot。</p>
-        <div class="evidence">出口：N3 delivered &gt; 0、responded &gt; 0、credential &gt; 0</div>
+        <h3>修 evidence surface，减少 N3 rebuttal</h3>
+        <p>4/6 delivered 被 rebutted，原因集中在 frozen verifier 只暴露 <code>small_seed_0/1/2</code> 和 <code>main_public_seed_123</code>。下一步要么收窄 brief 的 required evidence，要么提供可调用的 per-case surface；不要把这类 rebuttal 当成候选不配合。</p>
+        <div class="evidence">出口：rebuttal 理由从“无法获得证据”转为“证据支持/反对缺陷”</div>
       </div>
     </div>
     <div class="step">
       <div>
-        <h3>同批 R=3 重跑机制矩阵</h3>
-        <p>N0v/N1/N2/N3 使用同一 harness commit、同一 T/K/C/R；N1 也重跑，因为 producer evidence_refs 规则已变化。</p>
-        <div class="evidence">出口：配对效应、CI、MDE 与机制计数一致</div>
+        <h3>清掉 N3 的 4 条 pending，再跑 R=3</h3>
+        <p>同批 N2/N3、同一 harness commit、同一 T/K/C/R，R=3；N0v/N1 也需要同批重跑，才能做配对比较。当前 28 cycles 差值不能作为结论。</p>
+        <div class="evidence">出口：delivery/response/credential 可复现；配对 CI/MDE 可计算</div>
       </div>
     </div>
     <div class="step">
       <div>
         <h3>再决定 audit 的去留</h3>
-        <p>先看 N2−N1 的 delivery/artifact change，再看 N3−N2 的 response/credential；机制不成立时不解释分数。</p>
+        <p>修复机制已经成立（accepted → edit → hard settlement → verified）；下一步要判断它是否稳定地改善最终答案，而不是只看单次 c004。</p>
         <div class="evidence">出口：保留、收窄或舍弃 audit；不更换主终点</div>
       </div>
     </div>
   </div>
 
   <div class="callout green">
-    <strong>决策规则：</strong>如果 N2−N1 正向且 delivery/uptake 一致，审计投递值得保留；如果 N3−N2 只有 verified rate 有效、分数无变化，说明闭环改善了可观测性但没有改善答案；如果 N2−N1 无效，优先修 delivery/uptake，而不是改主终点或扩大预算。
+    <strong>决策规则：</strong>如果 R=3 中 N3−N2 仍为负，但 accepted repair 的比例和 verified rate 稳定，说明闭环改善的是可观测性与局部修复，不是最终选择；如果 N3−N2 转正且 mechanism 一致，才可以说闭环有最终收益；如果 N2−N1 无效，优先修 delivery/uptake，而不是改主终点或扩大预算。
   </div>
 </section>
 
@@ -659,7 +665,7 @@ code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em;
 <footer class="footer">
   <div class="wrap row">
     <span>SAT → Goal-Plus 审计迁移 · 实验方案与当前结果</span>
-    <span>2026-10-27 Codex R=1：N0 1298 · 5 个 arm completion pass · 7 briefs / 0 credential</span>
+    <span>2026-10-29 Codex R=1：N2 1351 / N3 1379 · N3 1 accepted · 1 verified repair · N2 少 28 cycles</span>
   </div>
 </footer>
 </body>
