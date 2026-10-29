@@ -8,7 +8,7 @@
 >
 > 实验：EdgeBench VLIW · N0/N0v/N1/N2/N3 · Pi/Codex 分开
 >
-> 状态：结果与结论待统一实验回填
+> 状态：2026-10-29 N2/N3 结果已回填；N3 首次 verified repair，N2 仍少 28 cycles
 
 ## 一、论文核心思想
 
@@ -227,62 +227,70 @@ N0       = 只用于成本解释
 
 ## 五、实验结果
 
-> 正式结果表待统一实验回填。已有的 N0–N3 运行只作为状态记录，不作为本报告的最终结果；正式数字必须来自同一代码、同一 T/K/C/R 的配对矩阵。
+> 2026-10-29 的 N2/N3 重跑是当前主结果；N0/N0v/N1 是 10-27 参考批次，不构成同一个五臂配对矩阵。N2/N3 使用 goal-plus `235e935`、harness `a690808`。
 
-### 5.1 表 R1 · 机制计数（待填）
+### 5.1 数据批次与有效性
 
-| Arm | Briefs | Delivered | Accepted | Ignored | Rebutted | Verified | Rejected | Delivery rate |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| N0v | — | — | — | — | — | — | — | — |
-| N1 | — | — | — | — | — | — | — | — |
-| N2 | — | — | — | — | — | — | — | — |
-| N3 | — | — | — | — | — | — | — | — |
+| Arm | batch | campaign | raw cycles | Judge | runtime | budget | eval | verifier records | briefs (prod / deliv) | completion |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| N0 | 10-27 | `edgebench-vliw-audit-n0-codex-r4` | 1298 | 82.60 | 6170s | 85.7% | 20 | 0 | 0 / 0 | pass |
+| N0v | 10-27 | `edgebench-vliw-audit-n0v-codex-r4` | 1441 | 75.62 | 4836s | 67.2% | 15 | 7 | 0 / 0 | pass |
+| N1 | 10-27 | `edgebench-vliw-audit-n1-codex-r4` | 1354 | 79.78 | 2943s | 40.9% | 9 | 8 | 3 / 0 | pass |
+| N2 | 10-29 | `edgebench-vliw-audit-n2-codex-r13` | **1351** | **79.93** | 7721s | 107.2% | 24 | 6 | 3 / 2 | pass |
+| N3 | 10-29 | `edgebench-vliw-audit-n3-codex-r12` | 1379 | 78.56 | 5425s | 75.3% | 15 | 10 | 10 / 6 | pass |
 
-### 5.2 表 R2 · 配对效应（待填）
+全部为 `K=4`、`C=1`、`R=1`；`official_edgebench_comparable=false`。N2 的 7721s 超过 T=7200s，包含 finalization grace；探索 cutoff 仍是 T。N0 1298 仍是全表最低 cycles，但它是 10-27 参考批次。
 
-| 对比 | n pairs | Mean Δ Judge | Bootstrap 95% CI | MDE | 方向 |
+### 5.2 表 R1 · 机制计数
+
+| Arm | Briefs | Delivered | Accepted | Ignored | Rebutted | Pending | Credentials (verified / rejected) | Delivery rate |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: |
+| N0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 / 0 | — |
+| N0v | 0 | 0 | 0 | 0 | 0 | 0 | 0 / 0 | — |
+| N1 shadow | 3 | 0 | 0 | 0 | 0 | 3 | 0 / 0 | 0.0 |
+| N2 apply | 3 | 2 | 0 | 0 | 0 | 1 | 0 / 0 | 66.7% |
+| N3 closure | 10 | 6 | 1 | 0 | 4 | 4 | 1 / 0 | 60.0% |
+
+N2 的 closure 关闭，accepted/credential 不适用。N3 的 6 条 delivered = 1 accepted + 4 rebutted + 1 delivered 未回答；另有 4 条 pending。
+
+### 5.3 表 R2 · 描述性差值（非配对因果）
+
+| 对比 | n pairs | Mean Δ Judge | Bootstrap 95% CI | MDE | 方向 / 解释 |
 | --- | ---: | ---: | --- | ---: | --- |
-| N1 − N0v | — | — | — | — | — |
-| N2 − N1 | — | — | — | — | — |
-| N3 − N2 | — | — | — | — | — |
-| N2 − N0v | — | — | — | — | — |
+| N2 − N1 | 1 | +0.15 | — | — | ≈ 持平；N2 1351 vs N1 1354，跨批次 |
+| N3 − N2 | 1 | −1.37 | — | — | ↓；N3 比 N2 多 28 cycles |
+| N2 − N0v | 1 | +4.30 | — | — | ↑；跨批次，N0v 预算更低 |
+| N3 − N0v | 1 | +2.93 | — | — | ↑；跨批次，不是 audit 因果 |
+| N0v − N0 | 1 | −6.97 | — | — | ↓；verifier-only 控制 |
 
-### 5.3 表 R3 · 审计质量与行为（待填）
+全部为 R=1；没有重复，因此没有 CI/MDE。`n=1` 只表示一个 task×run，不是统计配对样本。N2/N3 的 28 cycles 差值在单次运行噪声内。
 
-| Arm | Precision | Coverage | Uptake | Repair lift | Harm | Cost Δ |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| N1 | — | — | — | — | — | — |
-| N2 | — | — | — | — | — | — |
-| N3 | — | — | — | — | — | — |
+### 5.4 表 R3 · 审计质量与行为
 
-“—”是待填，不是 0，也不是负结果。只有 brief 产生后，precision 与 delivery 才有分母。
+| Arm | audit 记录 (ok/fail) | 完成率 | briefs | delivered | accepted | rebutted | pending | credentials (verified/rejected) | repair lift |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| N1 shadow | 6 / 2 | 75.0% | 3 | 0 | 0 | 0 | 3 | 0 / 0 | — |
+| N2 apply | 3 / 3 | 50.0% | 3 | 2 | 0 | 0 | 1 | 0 / 0 | — |
+| N3 closure | 10 / 0 | 100.0% | 10 | 6 | 1 | 4 | 4 | 1 / 0 | −164 cycles（c004 1543→1379） |
+| **合计** | **19 / 5** | **79.2%** | **16** | **8** | **1** | **4** | **8** | **1 / 0** | 仅 N3 c004 可计算 |
 
-### 5.4 结果解读规则
+Precision 仍不可计算：没有独立 defect 标签。N3 的 4 条 rebuttal 明确表示 frozen process verifier 只暴露 `small_seed_0/1/2` 和 `main_public_seed_123`，无法生成 brief 要求的 per-case evidence；这是 evidence surface / task reference 问题，不是候选无理由拒绝。
+
+> **第一个真实 audit 修复：** N3 c004 的 accepted brief 来自 1543 cycles；候选修复后 hard settlement 为 1379 cycles，credential 状态 verified。这是本次迁移第一次出现 `accepted → artifact change → hard settlement → verified credential` 的完整链路，−164 cycles。
+>
+> **但 N3 没有超过 N2：** N2 c004 在没有 closure 的情况下走 147734 → 1817 → 1482 → 1351；N3 c004 走 147734 → 1543 → 1379（repair）→ 1379 retain。N3 的修复改善了自己的候选，但 N2 的搜索路径仍然得到更低 cycles（1351 vs 1379）。
+
+### 5.5 结果解读规则
 
 - 先看 briefs / delivered / uptake，再看 artifact change / repair lift，最后看 Judge 与 cycles。
-- 机制不成立时，不解释分数；N1 没有 brief、N2 没有 delivery、N3 没有 response 时，分数差异不能归因于 audit。
+- 机制不成立时，不解释分数；N1 没有 delivery、N2 没有 closure、N3 有 pending 时，分数差异不能归因于 audit。
 - VLIW 必须同时报告 max、best、slowest case；不能只报平均 cycles。
 - hidden Judge 只做最终判定；public feedback 不能替代 hidden 结论。
 - Pi 与 Codex 分开报告；缺失或 incomplete 的 campaign 不进入均值。
 
-### 5.5 已有运行状态（非最终结果）
-
-以下记录来自不同代码批次与完成度，不能作为本报告主结果。保留它们是为了说明当前工程状态，而不是支持效应结论。
-
-| Arm | 运行 | 状态 | Judge 0–100 | raw cycles | audit 记录 | briefs |
-| --- | --- | --- | ---: | ---: | --- | ---: |
-| N0 | 2026-10-22 | partial | 77.36 | 1404 | 0 / 0 | 0 |
-| N0v | 2026-10-22 | partial | 78.80 | 1374 | 0 / 0 | 0 |
-| N1 | 2026-10-22 | partial | 87.17 | 1212 | 0 / 0 | 0 |
-| N2 | 2026-10-22 | invalid | — | — | — / — | — |
-| N3 | 2026-10-22 | partial | 76.46 | 1423 | 0 / 0 | 0 |
-| N3 | 2026-10-23 | completed | 81.63 | 1317 | 2 / 10 | 0 |
-
-N3 10-23 的 2 条 completed audit 都是 clean audit（0 defects），因此 broker 没有生成 brief；这属于“无可修复缺陷”，不是一次可评估的 closure。旧 N0/N0v/N1/N3 为 partial，N2 invalid。
-
 ## 六、结论
 
-论文侧结论可以现在写；“本实验是否证明 audit 有收益”必须等 R1–R3 回填后再写。两部分分开，避免把论文结论偷换成实验结论。
+论文侧结论和本实验结论分开写。最新 N3 已经证明“修复可以发生”，但还没有证明“审计提高最终答案”。
 
 ### 6.1 论文侧结论
 
@@ -291,42 +299,36 @@ N3 10-23 的 2 条 completed audit 都是 clean audit（0 defects），因此 br
 - 固定团队、冻结策略、反思式搜索和凭证审计可以组合成可迁移的非参数化组织能力。
 - 这些结论不能直接外推到软件工程、所有模型或所有成本条件。
 
-### 6.2 本实验结论（待填）
+### 6.2 本实验结论
 
-#### H1 审计生产
+**H1 生产：** N3 10/10 audit、N2 3/6、N1 6/8；producer 已能产出 brief，但 N2 只有 50% 完成率，precision 仍不可计算。
 
-> N1 相对 N0v 是否产出可定位缺陷，precision / coverage 是否过线？
+**H2 投递：** N2 1351 vs N1 1354，几乎持平；N2 有 2 条 delivered，但没有 closure/response/credential，不能归因于 delivery。
 
-结论：____________________________________________________________
+**H3 闭环：** N3 1 accepted / 1 verified；c004 1543→1379，修复机制成立。但 N3 1379 比 N2 1351 多 28 cycles，最终收益未成立。
 
-#### H2 投递
-
-> N2 相对 N1 是否改变候选行为并改善 Judge / cycles？
-
-结论：____________________________________________________________
-
-#### H3 闭环
-
-> N3 相对 N2 的 verified rate 与 repair lift 是否大于 harm？
-
-结论：____________________________________________________________
+**总体：** 可迁移的是“局部修复能力”；尚不能证明它能稳定改善最终选择。
 
 ### 6.3 结论边界
 
-当前只能说：
+当前可以说：
 
 - Goal-Plus 已具备“verifier 审计 → brief → candidate 修复 → hard credential”的可执行结构；
-- 不能说 audit 已提高 VLIW 分数、降低 cycles，或修复了具体 defect；
-- 如果 N1/N2/N3 没有形成 brief/delivery/credential，分数差异应归因于搜索执行、worker lease、模型随机性或选择，而不是 audit。
+- N3 首次出现 verified repair：1 accepted、1 credential verified，c004 −164 cycles；
+- 4 条 N3 rebuttal 是 evidence surface 问题，不是候选不配合。
 
-### 6.4 结论写作模板
+当前不能说：
 
-| 结论项 | 建议写法 |
-| --- | --- |
-| H1 审计生产 | “N1 相对 N0v 产生 `…` 条可定位 defect，precision 为 `…`；因此审计生产（成立 / 不成立 / 不确定）。” |
-| H2 投递 | “N2 相对 N1 的 Judge Δ 为 `…`，95% CI `…`；delivery/uptake 为 `…`；因此投递（有 / 无）可归因增量。” |
-| H3 闭环 | “N3 相对 N2 的 verified rate 为 `…`，repair lift 为 `…`，harm 为 `…`；因此闭环（成立 / 不成立 / 不确定）。” |
-| 总体判断 | “SAT 的审计—修复结构在 Goal-Plus 中（可迁移 / 部分可迁移 / 不可迁移），证据边界是 `…`。” |
+- audit 提高了 VLIW Judge 或降低了 cycles：N3−N2 = −1.37 Judge，方向相反；
+- 闭环改变了最终候选：N2 1351 仍优于 N3 1379；
+- N2 的 1351 是 delivered brief 的因果收益：没有 closure/response/credential；
+- N0 的 1298 是“无 audit 更优”：它来自 10-27 批次，c002 走 6 次迭代。
+
+### 6.4 下一步
+
+1. **修 evidence surface：** 4/6 N3 delivered 被 rebutted，原因是 frozen verifier 只暴露固定 case；收窄 brief 或提供可调用的 per-case surface。
+2. **清 pending 并跑 R=3：** 同批 N2/N3，同一 harness commit、同一 T/K/C/R；N0v/N1 也同批重跑，才能算配对 CI/MDE。
+3. **再决定 audit 去留：** 如果 repair 比例/verified rate 稳定但 N3−N2 仍为负，说明闭环改善可观测性和局部修复，不是最终选择。
 
 ## 参考
 
