@@ -13,6 +13,7 @@ from bench_goal_plus.goal_plus_command import (
 )
 from bench_goal_plus.collaboration_contract import (
     collaboration_controller_environment,
+    deliberation_shape,
     require_collaboration_controller,
 )
 from bench_goal_plus.sat_contract import (
@@ -138,6 +139,7 @@ def prepare(args: argparse.Namespace, profile: dict[str, Any]) -> Path:
         validate_pi_provider_model(model)
     experiment_mode = profile.get("experiment_mode")
     collaboration_mode = profile.get("collaboration_mode")
+    collaboration_shape = deliberation_shape(profile) if collaboration_mode else None
     requested_reasoning = getattr(args, "reasoning_effort", None)
     if requested_reasoning is not None:
         reasoning = requested_reasoning
@@ -427,8 +429,9 @@ def prepare(args: argparse.Namespace, profile: dict[str, Any]) -> Path:
                                 {
                                     "collaboration": {
                                         "mode": collaboration_mode,
+                                        "shape": collaboration_shape,
                                         "controller_env": collaboration_controller_environment(
-                                            str(collaboration_mode)
+                                            str(collaboration_mode), collaboration_shape
                                         ),
                                     }
                                 }

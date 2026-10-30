@@ -367,7 +367,9 @@ def launch_cell(
     # neither opt in nor opt out. C0 sends nothing, so the baseline stays
     # byte-identical to a run without the feature.
     environment.update(
-        collaboration_controller_environment(cell.get("collaboration_mode"))
+        collaboration_controller_environment(
+            cell.get("collaboration_mode"), cell.get("collaboration_shape")
+        )
     )
     if not cell.get("collaboration_mode"):
         environment.pop(COLLABORATION_CONTROLLER_ENV, None)

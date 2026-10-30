@@ -166,6 +166,101 @@ class CollaborationProfileValidationTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 load_profile(bad)
 
+    def test_deliberation_shape_is_validated_and_kept(self) -> None:
+        from experiments.edgebench.controller.profiles import load_profile
+
+        with tempfile.TemporaryDirectory() as directory:
+            ok = Path(directory) / "ok.json"
+            ok.write_text(
+                json.dumps(
+                    self._profile(
+                        dossier_level="summary",
+                        combination="blackboard",
+                        roster_size=1,
+                    )
+                ),
+                encoding="utf-8",
+            )
+            _, profile = load_profile(ok)
+            self.assertEqual(profile["dossier_level"], "summary")
+            self.assertEqual(profile["combination"], "blackboard")
+            self.assertEqual(profile["roster_size"], 1)
+
+            for overrides in (
+                {"dossier_level": "verbose"},
+                {"combination": "majority"},
+                {"roster_size": 4},
+            ):
+                bad = Path(directory) / f"bad-{list(overrides)[0]}.json"
+                bad.write_text(
+                    json.dumps(self._profile(**overrides)), encoding="utf-8"
+                )
+                with self.assertRaises(ValueError):
+                    load_profile(bad)
+
+
+class CollaborationShapePayloadTest(unittest.TestCase):
+    def test_default_shape_is_frozen_into_the_payload(self) -> None:
+        payload = collaboration_payload("c1")
+
+        self.assertEqual(payload["dossier"], "detailed")
+        self.assertEqual(payload["combination"], "ensemble")
+        self.assertEqual(payload["roster_size"], 3)
+
+    def test_profile_shape_overrides_the_default(self) -> None:
+        from bench_goal_plus.collaboration_contract import deliberation_shape
+
+        shape = deliberation_shape(
+            {"dossier_level": "summary", "combination": "staged", "roster_size": 1}
+        )
+        payload = collaboration_payload("c2", shape)
+
+        self.assertEqual(payload["dossier"], "summary")
+        self.assertEqual(payload["combination"], "staged")
+        self.assertEqual(payload["roster_size"], 1)
+        self.assertEqual(len(payload["strategy_ids"]), 10)
+
+    def test_baseline_arm_ignores_the_shape(self) -> None:
+        self.assertEqual(
+            collaboration_controller_environment("c0", {"dossier": "summary"}), {}
+        )
+
+    def test_shape_knobs_are_rejected_when_invalid(self) -> None:
+        for shape in (
+            {"dossier": "verbose"},
+            {"combination": "majority"},
+            {"roster_size": 0},
+            {"roster_size": "many"},
+        ):
+            with self.assertRaises(ValueError):
+                collaboration_payload("c1", shape)
+
+    def test_preflight_requires_the_shape_aware_bank(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            overlay = (
+                root / "src" / "goal_plus" / "application" / "controller_overlay.py"
+            )
+            overlay.parent.mkdir(parents=True)
+            overlay.write_text(
+                "CONTROLLER_COLLABORATION_ENV = 'x'\n"
+                "def apply_controller_collaboration_overlay():\n    pass\n",
+                encoding="utf-8",
+            )
+            bank = root / "src" / "goal_plus" / "domain" / "collaboration.py"
+            bank.parent.mkdir(parents=True)
+            bank.write_text("SAT_MATH_BANK = ()\n", encoding="utf-8")
+
+            with self.assertRaises(RuntimeError):
+                require_collaboration_controller(root, "c1")
+            # The baseline arm never sends a payload, so it needs no shape knobs.
+            require_collaboration_controller(root, "c0")
+
+            bank.write_text(
+                "dossier: str\ncombination: str\nroster_size: int\n", encoding="utf-8"
+            )
+            require_collaboration_controller(root, "c1")
+
 
 if __name__ == "__main__":
     unittest.main()

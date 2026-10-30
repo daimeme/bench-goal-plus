@@ -13,6 +13,7 @@ from .asset_issues import excluded_task_issues
 from .context import current_paths
 from bench_goal_plus.collaboration_contract import (
     COLLABORATION_MODES,
+    deliberation_shape,
     expected_condition as expected_collaboration_condition,
 )
 from bench_goal_plus.sat_contract import (
@@ -280,6 +281,9 @@ def load_profile(value: str | Path) -> tuple[Path, dict[str, Any]]:
                     "collaboration EdgeBench profiles run exactly the VLIW task"
                 )
             expected_collaboration_condition(collaboration_mode)
+            # The evidence level and conversation shape are frozen spec fields;
+            # validating them here keeps a typo out of the campaign archive.
+            deliberation_shape(profile)
         experiment_mode = profile.get("experiment_mode")
         if experiment_mode is not None:
             if experiment_mode not in SAT_EXPERIMENT_MODES:
