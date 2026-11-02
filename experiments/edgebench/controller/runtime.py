@@ -16,6 +16,10 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from bench_runtime_paths import configure_temp_environment
+from bench_goal_plus.search_strategy import (
+    resolve_search_strategy_arm,
+    search_strategy_controller_environment,
+)
 
 from . import io
 from .context import current_paths
@@ -296,6 +300,15 @@ def cell_environment(
                 or cell["reasoning_effort"]
             ),
         }
+        search_strategy_arm = cell.get("search_strategy_arm")
+        if search_strategy_arm:
+            extra_env.update(
+                search_strategy_controller_environment(
+                    resolve_search_strategy_arm(str(search_strategy_arm))
+                )
+            )
+        else:
+            extra_env.pop("GOAL_PLUS_CONTROLLER_SEARCH_STRATEGY", None)
         if cell["method"] in {"goal-plus-pi", "goal-plus-pi-provider"}:
             extra_env.update(
                 {

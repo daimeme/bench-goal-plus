@@ -11,6 +11,10 @@ from bench_goal_plus.goal_plus_command import (
     goal_plus_command_config,
     goal_plus_entrypoint,
 )
+from bench_goal_plus.search_strategy import (
+    resolve_search_strategy_arm,
+    search_strategy_controller_environment,
+)
 
 from . import io
 from .context import current_paths
@@ -125,6 +129,11 @@ def prepare(args: argparse.Namespace, profile: dict[str, Any]) -> Path:
     model = args.model or profile["model"]
     if api_protocol == "pi-provider":
         validate_pi_provider_model(model)
+    experiment_mode = profile.get("experiment_mode")
+    search_strategy_arm = profile.get("search_strategy_arm")
+    if search_strategy_arm is not None:
+        # Fail before prepare when the selected arm is unknown.
+        resolve_search_strategy_arm(str(search_strategy_arm))
     requested_reasoning = getattr(args, "reasoning_effort", None)
     if requested_reasoning is not None:
         reasoning = requested_reasoning
@@ -353,6 +362,11 @@ def prepare(args: argparse.Namespace, profile: dict[str, Any]) -> Path:
                 "model": model,
                 "reasoning_effort": reasoning,
                 **role_config,
+                **(
+                    {"search_strategy_arm": search_strategy_arm}
+                    if search_strategy_arm is not None
+                    else {}
+                ),
                 **(global_evidence_config if method in GOAL_PLUS_METHODS else {}),
                 **(
                     goal_plus_feature_config
@@ -518,6 +532,11 @@ def prepare(args: argparse.Namespace, profile: dict[str, Any]) -> Path:
             ),
             "dataset_revision": profile["dataset_revision"],
             "task_ids": list(profile["task_ids"]),
+            **(
+                {"search_strategy_arm": profile["search_strategy_arm"]}
+                if profile.get("search_strategy_arm") is not None
+                else {}
+            ),
             "methods": methods,
             "model": model,
             "reasoning_effort": reasoning,

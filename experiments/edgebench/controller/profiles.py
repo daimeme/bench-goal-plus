@@ -11,6 +11,7 @@ import yaml
 from . import io
 from .asset_issues import excluded_task_issues
 from .context import current_paths
+from bench_goal_plus.search_strategy import resolve_search_strategy_arm
 
 
 METHODS = {
@@ -242,6 +243,17 @@ def load_profile(value: str | Path) -> tuple[Path, dict[str, Any]]:
     goal_plus_methods = set(profile["methods"]) & GOAL_PLUS_METHODS
     if goal_plus_methods:
         global_evidence_mode = profile.get("global_evidence_mode", "manual")
+        search_strategy_arm = profile.get("search_strategy_arm")
+        if search_strategy_arm is not None:
+            resolve_search_strategy_arm(str(search_strategy_arm))
+            if len(profile["methods"]) != 1:
+                raise ValueError(
+                    "a search-strategy EdgeBench profile must contain exactly one method"
+                )
+            if profile["task_ids"] != ["vliw_kernel_optimization"]:
+                raise ValueError(
+                    "search-strategy EdgeBench profiles run exactly the VLIW task"
+                )
         if global_evidence_mode not in GLOBAL_EVIDENCE_MODES:
             allowed = ", ".join(sorted(GLOBAL_EVIDENCE_MODES))
             raise ValueError(f"global_evidence_mode must be one of {allowed}")
@@ -253,6 +265,7 @@ def load_profile(value: str | Path) -> tuple[Path, dict[str, Any]]:
             profile[field] = value
     else:
         goal_plus_fields = {
+            "search_strategy_arm",
             "global_evidence_mode",
             *GOAL_PLUS_FEATURE_FLAGS,
         }

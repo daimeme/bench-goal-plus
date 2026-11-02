@@ -780,6 +780,102 @@
         "concurrency": 1,
         "cell_concurrency": 1
       }
+    },
+    {
+      "id": "edgebench-vliw-e0-codex-2h",
+      "description": "VLIW LLM-Verifier arm e0 (hard-only baseline): Goal Plus + Codex, gpt-5.6-sol medium, T=7200, K=4, C=1, R=1.",
+      "benchmarks": ["edgebench"],
+      "profile": "vliw-e0-codex-gpt-5-6-sol-2h-k4-c1",
+      "campaign_id_template": "edgebench-vliw-e0-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": ["goal-plus-codex"],
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1
+      }
+    },
+    {
+      "id": "edgebench-vliw-e1-codex-2h",
+      "description": "VLIW LLM-Verifier arm e1 (verifier-on, hard-score rank): Goal Plus + Codex, gpt-5.6-sol medium, T=7200, K=4, C=1, R=1.",
+      "benchmarks": ["edgebench"],
+      "profile": "vliw-e1-codex-gpt-5-6-sol-2h-k4-c1",
+      "campaign_id_template": "edgebench-vliw-e1-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": ["goal-plus-codex"],
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1
+      }
+    },
+    {
+      "id": "edgebench-vliw-e2-codex-2h",
+      "description": "VLIW LLM-Verifier arm e2 (quality-score ranking, E1): Goal Plus + Codex, gpt-5.6-sol medium, T=7200, K=4, C=1, R=1.",
+      "benchmarks": ["edgebench"],
+      "profile": "vliw-e2-codex-gpt-5-6-sol-2h-k4-c1",
+      "campaign_id_template": "edgebench-vliw-e2-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": ["goal-plus-codex"],
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1
+      }
+    },
+    {
+      "id": "edgebench-vliw-e3-codex-2h",
+      "description": "VLIW LLM-Verifier arm e3 (allocation swe_search_uct, E2): Goal Plus + Codex, gpt-5.6-sol medium, T=7200, K=4, C=1, R=1.",
+      "benchmarks": ["edgebench"],
+      "profile": "vliw-e3-codex-gpt-5-6-sol-2h-k4-c1",
+      "campaign_id_template": "edgebench-vliw-e3-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": ["goal-plus-codex"],
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1
+      }
+    },
+    {
+      "id": "edgebench-vliw-e4-codex-2h",
+      "description": "VLIW LLM-Verifier arm e4 (steering search_diagnostic_guidance, E3): Goal Plus + Codex, gpt-5.6-sol medium, T=7200, K=4, C=1, R=1.",
+      "benchmarks": ["edgebench"],
+      "profile": "vliw-e4-codex-gpt-5-6-sol-2h-k4-c1",
+      "campaign_id_template": "edgebench-vliw-e4-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": ["goal-plus-codex"],
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1
+      }
+    },
+    {
+      "id": "edgebench-vliw-e5-codex-2h",
+      "description": "VLIW LLM-Verifier arm e5 (allocation + steering): Goal Plus + Codex, gpt-5.6-sol medium, T=7200, K=4, C=1, R=1.",
+      "benchmarks": ["edgebench"],
+      "profile": "vliw-e5-codex-gpt-5-6-sol-2h-k4-c1",
+      "campaign_id_template": "edgebench-vliw-e5-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": ["goal-plus-codex"],
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1
+      }
     }
   ]
 }
