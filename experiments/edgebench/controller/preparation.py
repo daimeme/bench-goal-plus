@@ -12,6 +12,7 @@ from bench_goal_plus.goal_plus_command import (
     goal_plus_entrypoint,
 )
 from bench_goal_plus.search_strategy import (
+    require_search_strategy_overlay,
     resolve_search_strategy_arm,
     search_strategy_controller_environment,
 )
@@ -241,6 +242,8 @@ def prepare(args: argparse.Namespace, profile: dict[str, Any]) -> Path:
             raise ValueError(
                 f"Goal Plus source validation failed: {goal_plus_source['error']}"
             )
+        if search_strategy_arm is not None:
+            require_search_strategy_overlay(Path(str(goal_plus_source["source_dir"])))
     profile_protocol_overrides = dict(profile.get("protocol_overrides") or {})
     allowed_protocol_override_fields = ALLOWED_PROTOCOL_OVERRIDE_FIELDS | set(
         profile_protocol_overrides

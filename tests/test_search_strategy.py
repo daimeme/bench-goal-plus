@@ -1,4 +1,5 @@
 import json
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -6,6 +7,7 @@ from bench_goal_plus.search_strategy import (
     DIAGNOSTIC_SCORE_KEYS,
     SEARCH_STRATEGY_ARMS,
     SEARCH_STRATEGY_ENV,
+    require_search_strategy_overlay,
     resolve_search_strategy_arm,
     search_strategy_controller_environment,
 )
@@ -90,6 +92,29 @@ class SearchStrategyContractTest(unittest.TestCase):
             self.assertIn(profile["search_strategy_arm"], SEARCH_STRATEGY_ARMS)
             self.assertEqual(profile["methods"], ["goal-plus-codex"])
             self.assertEqual(profile["model"], "gpt-5.6-sol")
+
+    def test_require_overlay_rejects_a_source_without_it(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            # Missing controller_overlay.py entirely.
+            with self.assertRaises(RuntimeError):
+                require_search_strategy_overlay(root)
+            overlay = (
+                root / "src" / "goal_plus" / "application" / "controller_overlay.py"
+            )
+            overlay.parent.mkdir(parents=True)
+            # Present but lacking the search-strategy tokens.
+            overlay.write_text("def nothing():\n    pass\n", encoding="utf-8")
+            with self.assertRaises(RuntimeError):
+                require_search_strategy_overlay(root)
+            # Present with both tokens.
+            overlay.write_text(
+                'CONTROLLER_SEARCH_STRATEGY_ENV = "GOAL_PLUS_CONTROLLER_SEARCH_STRATEGY"\n'
+                "def apply_controller_search_strategy_overlay(spec, raw):\n"
+                "    return spec\n",
+                encoding="utf-8",
+            )
+            require_search_strategy_overlay(root)  # must not raise
 
 
 if __name__ == "__main__":

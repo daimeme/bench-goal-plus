@@ -12,6 +12,7 @@ and transport it.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any, Mapping
 
 SEARCH_STRATEGY_ENV = "GOAL_PLUS_CONTROLLER_SEARCH_STRATEGY"
@@ -98,10 +99,52 @@ def search_strategy_controller_environment(
     return {SEARCH_STRATEGY_ENV: payload}
 
 
+def require_search_strategy_overlay(goal_plus_root: Path) -> None:
+    """Fail before prepare when the selected Goal Plus source lacks the overlay.
+
+    The controller exports ``GOAL_PLUS_CONTROLLER_SEARCH_STRATEGY``, but the
+    overlay only takes effect if the selected Goal Plus source carries
+    ``apply_controller_search_strategy_overlay``.  Without this check a
+    ``search_strategy_arm`` campaign silently runs as a hard-only search and
+    produces zero verifier records, so it must fail at prepare time instead.
+    """
+
+    overlay = (
+        goal_plus_root
+        / "src"
+        / "goal_plus"
+        / "application"
+        / "controller_overlay.py"
+    )
+    if not overlay.is_file():
+        raise RuntimeError(
+            "search-strategy arms require a Goal Plus source with the controller "
+            "search-strategy overlay; the selected source has no "
+            f"{overlay.relative_to(goal_plus_root)}"
+        )
+    text = overlay.read_text(encoding="utf-8")
+    missing = [
+        token
+        for token in (
+            "CONTROLLER_SEARCH_STRATEGY_ENV",
+            "apply_controller_search_strategy_overlay",
+        )
+        if token not in text
+    ]
+    if missing:
+        raise RuntimeError(
+            "the selected Goal Plus source has a controller overlay without "
+            f"search-strategy support (missing {', '.join(missing)}); point the "
+            "goal-plus upstream at a revision that includes the search-strategy "
+            "overlay before running search_strategy_arm campaigns"
+        )
+
+
 __all__ = [
     "SEARCH_STRATEGY_ENV",
     "DIAGNOSTIC_SCORE_KEYS",
     "SEARCH_STRATEGY_ARMS",
     "resolve_search_strategy_arm",
     "search_strategy_controller_environment",
+    "require_search_strategy_overlay",
 ]
