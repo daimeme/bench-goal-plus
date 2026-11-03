@@ -137,28 +137,28 @@ class ReproEnvironmentTest(unittest.TestCase):
         goal_plus = manifest["upstreams"]["goal_plus"]
         self.assertEqual(
             goal_plus["repository"],
-            "https://gitcode.com/yiyanzhi_akane1/muyuan.git",
+            "https://gitcode.com/dairenjie/muyuan.git",
         )
         self.assertEqual(
             goal_plus["repository_fallbacks"],
-            ["git@gitcode.com:yiyanzhi_akane1/muyuan.git"],
+            ["git@gitcode.com:dairenjie/muyuan.git"],
         )
         self.assertEqual(
             repro_env.repository_transport_urls(goal_plus),
             [
-                "https://gitcode.com/yiyanzhi_akane1/muyuan.git",
-                "git@gitcode.com:yiyanzhi_akane1/muyuan.git",
+                "https://gitcode.com/dairenjie/muyuan.git",
+                "git@gitcode.com:dairenjie/muyuan.git",
             ],
         )
         self.assertEqual(
             repro_env.normalize_repository(goal_plus["repository"]),
             repro_env.normalize_repository(
-                "git@gitcode.com:yiyanzhi_akane1/muyuan.git"
+                "git@gitcode.com:dairenjie/muyuan.git"
             ),
         )
         self.assertEqual(goal_plus["checkout_dir"], "muyuan")
         self.assertEqual(goal_plus["source_subdir"], "plugins/goal-plus")
-        self.assertEqual(goal_plus["tracking_branch"], "master")
+        self.assertEqual(goal_plus["tracking_branch"], "llm-verifier-e1e5")
         self.assertEqual(
             repro_env.checkout_paths(manifest, ROOT / "third_party")["goal_plus"],
             ROOT / "third_party" / "muyuan",
