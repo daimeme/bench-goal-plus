@@ -93,6 +93,23 @@ class SearchStrategyContractTest(unittest.TestCase):
             self.assertEqual(profile["methods"], ["goal-plus-codex"])
             self.assertEqual(profile["model"], "gpt-5.6-sol")
 
+    def test_seed_variants_cover_six_arms_three_seeds(self) -> None:
+        variants = sorted(
+            p.name
+            for p in PROFILE_ROOT.glob(
+                "vliw-e*-codex-gpt-5-6-sol-2h-k4-c1-s*.json"
+            )
+        )
+        self.assertEqual(len(variants), 18)
+        for name in variants:
+            profile = json.loads((PROFILE_ROOT / name).read_text(encoding="utf-8"))
+            arm = profile["search_strategy_arm"]
+            seed = profile["sampling_seed"]
+            self.assertIn(arm, SEARCH_STRATEGY_ARMS)
+            self.assertIn(seed, (1, 2, 3))
+            self.assertEqual(profile["id"], f"vliw-{arm}-codex-gpt-5-6-sol-2h-k4-c1-s{seed}")
+            self.assertEqual(profile["methods"], ["goal-plus-codex"])
+
     def test_require_overlay_rejects_a_source_without_it(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
