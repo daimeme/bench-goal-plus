@@ -1,3 +1,4 @@
+import base64
 import json
 import tempfile
 import unittest
@@ -76,10 +77,18 @@ class SearchStrategyContractTest(unittest.TestCase):
             resolve_search_strategy_arm("bogus")
         self.assertIsNone(resolve_search_strategy_arm(None))
 
-    def test_controller_environment_transports_json(self) -> None:
+    def test_controller_environment_transports_base64(self) -> None:
         env = search_strategy_controller_environment(resolve_search_strategy_arm("e2"))
         self.assertEqual(set(env), {SEARCH_STRATEGY_ENV})
-        self.assertIn("quality_score", env[SEARCH_STRATEGY_ENV])
+        value = env[SEARCH_STRATEGY_ENV]
+        # base64url is comma-free, so SFORGE_AGENT_EXTRA_ENV does not split it.
+        self.assertNotIn(",", value)
+        decoded = json.loads(
+            base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+        )
+        self.assertEqual(
+            decoded["selection"]["ranking_keys"], ["quality_score", "hard_score"]
+        )
         self.assertEqual(search_strategy_controller_environment(None), {})
 
     def test_profiles_reference_known_arms(self) -> None:

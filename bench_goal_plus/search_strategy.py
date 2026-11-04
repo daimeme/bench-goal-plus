@@ -11,6 +11,7 @@ and transport it.
 
 from __future__ import annotations
 
+import base64
 import json
 from pathlib import Path
 from typing import Any, Mapping
@@ -88,15 +89,22 @@ def resolve_search_strategy_arm(arm: str | None) -> dict[str, Any] | None:
 def search_strategy_controller_environment(
     strategy: Mapping[str, Any] | None,
 ) -> dict[str, str]:
-    """Return the worker environment that transports the arm, or empty."""
+    """Return the worker environment that transports the arm, or empty.
+
+    The payload is base64url-encoded: ``SFORGE_AGENT_EXTRA_ENV`` is a
+    comma-separated ``KEY=VALUE`` string, so a raw JSON payload (which is full
+    of commas) would be split apart by SForge and never reach the Goal Plus
+    freeze path.  Base64url is comma-free and survives the transport intact.
+    """
 
     if not strategy:
         return {}
     try:
-        payload = json.dumps(dict(strategy), separators=(",", ":"))
+        payload = json.dumps(dict(strategy), separators=(",", ":")).encode("utf-8")
     except (TypeError, ValueError) as exc:  # noqa: BLE001 - surfaced verbatim
         raise ValueError(f"search strategy is not JSON-serializable: {exc}") from exc
-    return {SEARCH_STRATEGY_ENV: payload}
+    encoded = base64.urlsafe_b64encode(payload).decode("ascii")
+    return {SEARCH_STRATEGY_ENV: encoded}
 
 
 def require_search_strategy_overlay(goal_plus_root: Path) -> None:
