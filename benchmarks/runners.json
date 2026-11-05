@@ -876,6 +876,54 @@
         "concurrency": 4,
         "cell_concurrency": 1
       }
+    },
+    {
+      "id": "edgebench-vliw-e6-codex-2h",
+      "description": "VLIW LLM-Verifier arm e6 (gated verifier + reward-driven allocation): Goal Plus + Codex, gpt-5.6-sol medium, T=7200, K=4, C=1, R=1.",
+      "benchmarks": ["edgebench"],
+      "profile": "vliw-e6-codex-gpt-5-6-sol-2h-k4-c1",
+      "campaign_id_template": "edgebench-vliw-e6-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": ["goal-plus-codex"],
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1
+      }
+    },
+    {
+      "id": "edgebench-vliw-e7-codex-2h",
+      "description": "VLIW LLM-Verifier arm e7 (gated verifier + reward-driven allocation + quantified-bottleneck steering): Goal Plus + Codex, gpt-5.6-sol medium, T=7200, K=4, C=1, R=1.",
+      "benchmarks": ["edgebench"],
+      "profile": "vliw-e7-codex-gpt-5-6-sol-2h-k4-c1",
+      "campaign_id_template": "edgebench-vliw-e7-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": ["goal-plus-codex"],
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1
+      }
+    },
+    {
+      "id": "edgebench-vliw-e8-codex-2h",
+      "description": "VLIW LLM-Verifier arm e8 (e7 without the verifier gate): Goal Plus + Codex, gpt-5.6-sol medium, T=7200, K=4, C=1, R=1.",
+      "benchmarks": ["edgebench"],
+      "profile": "vliw-e8-codex-gpt-5-6-sol-2h-k4-c1",
+      "campaign_id_template": "edgebench-vliw-e8-k4-c1-r1-{timestamp}",
+      "expected_profile": {
+        "task_count": 1,
+        "methods": ["goal-plus-codex"],
+        "model": "gpt-5.6-sol",
+        "reasoning_effort": "medium",
+        "wall_time_seconds": 7200,
+        "concurrency": 4,
+        "cell_concurrency": 1
+      }
     }
   ]
 }

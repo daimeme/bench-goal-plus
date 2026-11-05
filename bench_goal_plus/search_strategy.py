@@ -26,9 +26,25 @@ DIAGNOSTIC_SCORE_KEYS = [
     "boundary_evidence_strength",
 ]
 
-# E1-E5 arm ladder (see the LLM-Verifier paper section).
+# VLIW optimizer scores: two qualitative judgments plus six quantified bottleneck
+# scores.  The allocation policy derives its own deterministic optimization_gain
+# from the snapshot's hard_score, so no verifier score exists for it.
+VLIW_OPTIMIZER_SCORE_KEYS = [
+    "robustness",
+    "headroom",
+    "bottleneck_register",
+    "bottleneck_memory",
+    "bottleneck_dependency",
+    "bottleneck_simd_tail",
+    "bottleneck_scheduling",
+    "bottleneck_hash",
+]
+
+# E0-E8 arm ladder (see the LLM-Verifier paper section).
 # e0 hard-only baseline; e1 verifier-on/hard-rank; e2 quality-rank (E1);
 # e3 allocation (E2); e4 steering (E3); e5 allocation + steering (combined).
+# e6 VLIW feedback (gated verifier + reward-driven allocation); e7 adds the
+# quantified-bottleneck steering; e8 is the same as e7 with the gate off.
 SEARCH_STRATEGY_ARMS: dict[str, dict[str, Any]] = {
     "e0": {
         "initial_context": "fresh",
@@ -68,6 +84,30 @@ SEARCH_STRATEGY_ARMS: dict[str, dict[str, Any]] = {
         "adaptive_search": {
             "allocation": {"policy": "swe_search_uct/v1"},
             "steering": {"policy": "search_diagnostic_guidance/v1"},
+        },
+    },
+    "e6": {
+        "initial_context": "fresh",
+        "selection": {"ranking_keys": ["hard_score"], "ranking_tolerance": [0.0]},
+        "verifier": {"scores": VLIW_OPTIMIZER_SCORE_KEYS, "gate": True},
+        "adaptive_search": {"allocation": {"policy": "vliw_reward_uct/v1"}},
+    },
+    "e7": {
+        "initial_context": "fresh",
+        "selection": {"ranking_keys": ["hard_score"], "ranking_tolerance": [0.0]},
+        "verifier": {"scores": VLIW_OPTIMIZER_SCORE_KEYS, "gate": True},
+        "adaptive_search": {
+            "allocation": {"policy": "vliw_reward_uct/v1"},
+            "steering": {"policy": "vliw_action_guidance/v1"},
+        },
+    },
+    "e8": {
+        "initial_context": "fresh",
+        "selection": {"ranking_keys": ["hard_score"], "ranking_tolerance": [0.0]},
+        "verifier": {"scores": VLIW_OPTIMIZER_SCORE_KEYS, "gate": False},
+        "adaptive_search": {
+            "allocation": {"policy": "vliw_reward_uct/v1"},
+            "steering": {"policy": "vliw_action_guidance/v1"},
         },
     },
 }
@@ -151,6 +191,7 @@ def require_search_strategy_overlay(goal_plus_root: Path) -> None:
 __all__ = [
     "SEARCH_STRATEGY_ENV",
     "DIAGNOSTIC_SCORE_KEYS",
+    "VLIW_OPTIMIZER_SCORE_KEYS",
     "SEARCH_STRATEGY_ARMS",
     "resolve_search_strategy_arm",
     "search_strategy_controller_environment",
