@@ -40,11 +40,16 @@ Phase B 额外验收（对应审计的三条缺陷）：
 
 | # | 断言 | 检查命令 | 期望 |
 |---|---|---|---|
-| P1 | bench-goal-plus 在 `llm-verifier-e1e5`，含 base64 修复与 e6–e8 臂 | `git rev-parse --abbrev-ref HEAD; git log --oneline -1` | `llm-verifier-e1e5`，HEAD ≥ `d1612e3` |
-| P2 | goal-plus 源含 overlay + gate + VLIW 策略 | `git -C third_party/muyuan log --oneline -1` | HEAD ≥ `77dd8b4`，且 `controller_overlay.py` 含 `apply_controller_search_strategy_overlay`、`vliw_reward_uct.py` 存在 |
+| P1 | bench-goal-plus 在 `llm-verifier-e1e5`，含 base64 修复与 e6–e8 臂 | `git rev-parse --abbrev-ref HEAD; git rev-parse --short HEAD` | `llm-verifier-e1e5`，HEAD **精确等于** `5e53251` |
+| P2 | goal-plus 源含 overlay + gate + VLIW 策略，且两边 commit 完全对应 | `git -C third_party/muyuan rev-parse --abbrev-ref HEAD; git -C third_party/muyuan rev-parse --short HEAD; git -C third_party/muyuan status --short` | 分支 `llm-verifier-e1e5`，HEAD **精确等于** `77dd8b4`，working tree 干净；`controller_overlay.py` 含 `apply_controller_search_strategy_overlay`、`vliw_reward_uct.py` 存在 |
 | P3 | `upstreams.json` 的 `goal_plus` 指向私仓 | `python3 -c "import json;u=json.load(open('environment/upstreams.json'))['upstreams']['goal_plus'];print(u['repository'],u['tracking_branch'])"` | `dairenjie/muyuan`、`llm-verifier-e1e5` |
 | P4 | 27 个 seed profile 存在（9 臂 × 3 seed） | `ls experiments/edgebench/profiles/vliw-e*-codex-gpt-5-6-sol-2h-k4-c1-s{1,2,3}.json \| wc -l` | `27` |
 | P5 | 环境可用（Docker + 鉴权） | `python3 scripts/bench.py check --environment` | 通过，或仅缺非阻塞项并已记录 |
+
+> **P2 是上次踩过的坑**：`third_party/muyuan` 默认可能停在 `master`（旧代码，没有 gate / VLIW 策略），
+> 必须显式切到 `llm-verifier-e1e5` 并核对 HEAD 精确等于 `77dd8b4`，不能只看分支名。
+> 交叉校验：`git -C third_party/muyuan rev-parse HEAD` 必须与 muyuan 仓库推送的 `llm-verifier-e1e5`
+> HEAD 逐字节相同；任一不一致就 `git fetch fork llm-verifier-e1e5 && git checkout llm-verifier-e1e5`。
 
 > P2 的 goal-plus checkout 路径以 `resolve_goal_plus_source` 实际解析结果为准；
 > 若为 `source_kind=external`，改用 `SFORGE_GOAL_PLUS_SOURCE_DIR` 指向的目录做同样检查。
