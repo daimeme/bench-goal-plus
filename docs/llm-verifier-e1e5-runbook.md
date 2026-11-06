@@ -40,14 +40,14 @@ Phase B 额外验收（对应审计的三条缺陷）：
 
 | # | 断言 | 检查命令 | 期望 |
 |---|---|---|---|
-| P1 | bench-goal-plus 在 `llm-verifier-e1e5`，含 base64 修复与 e6–e8 臂 | `git rev-parse --abbrev-ref HEAD; git rev-parse --short HEAD` | `llm-verifier-e1e5`，HEAD ≥ `5e53251`（含 e6–e8 臂；手册自身的后续提交不影响） |
-| P2 | goal-plus 源含 overlay + gate + VLIW 策略，且两边 commit 完全对应 | `git -C third_party/muyuan rev-parse --abbrev-ref HEAD; git -C third_party/muyuan rev-parse --short HEAD; git -C third_party/muyuan status --short` | 分支 `llm-verifier-e1e5`，HEAD **精确等于** `77dd8b4`，working tree 干净；`controller_overlay.py` 含 `apply_controller_search_strategy_overlay`、`vliw_reward_uct.py` 存在 |
+| P1 | bench-goal-plus 在 `llm-verifier-e1e5`，含 base64 修复与 e6–e8 臂 | `git rev-parse --abbrev-ref HEAD; git rev-parse --short HEAD` | `llm-verifier-e1e5`，HEAD ≥ `50cf020`（含 e6–e8 臂；手册自身的后续提交不影响） |
+| P2 | goal-plus 源含 overlay + gate + VLIW 策略，且两边 commit 完全对应 | `git -C third_party/muyuan rev-parse --abbrev-ref HEAD; git -C third_party/muyuan rev-parse --short HEAD; git -C third_party/muyuan status --short` | 分支 `llm-verifier-e1e5`，HEAD **精确等于** `36ab3db`，working tree 干净；`controller_overlay.py` 含 `apply_controller_search_strategy_overlay`、`vliw_reward_uct.py` 存在 |
 | P3 | `upstreams.json` 的 `goal_plus` 指向私仓 | `python3 -c "import json;u=json.load(open('environment/upstreams.json'))['upstreams']['goal_plus'];print(u['repository'],u['tracking_branch'])"` | `dairenjie/muyuan`、`llm-verifier-e1e5` |
 | P4 | 27 个 seed profile 存在（9 臂 × 3 seed） | `ls experiments/edgebench/profiles/vliw-e*-codex-gpt-5-6-sol-2h-k4-c1-s{1,2,3}.json \| wc -l` | `27` |
 | P5 | 环境可用（Docker + 鉴权） | `python3 scripts/bench.py check --environment` | 通过，或仅缺非阻塞项并已记录 |
 
 > **P2 是上次踩过的坑**：`third_party/muyuan` 默认可能停在 `master`（旧代码，没有 gate / VLIW 策略），
-> 必须显式切到 `llm-verifier-e1e5` 并核对 HEAD 精确等于 `77dd8b4`，不能只看分支名。
+> 必须显式切到 `llm-verifier-e1e5` 并核对 HEAD 精确等于 `36ab3db`，不能只看分支名。
 > 交叉校验：`git -C third_party/muyuan rev-parse HEAD` 必须与 muyuan 仓库推送的 `llm-verifier-e1e5`
 > HEAD 逐字节相同；任一不一致就 `git fetch fork llm-verifier-e1e5 && git checkout llm-verifier-e1e5`。
 
@@ -170,8 +170,8 @@ print(f"ALL {len(rows)} VALID")
 
 | ID | 失败签名 | 根因 | 自动修复动作 |
 |---|---|---|---|
-| M1 | `prepare` 报 `require_search_strategy_overlay` 失败 | goal-plus 源缺 overlay | `git -C <goal-plus checkout> fetch origin && git -C <…> checkout llm-verifier-e1e5`（≥ `77dd8b4`）；确认 P2 后重试 |
-| M2 | e1–e5 `verifier_records==0` 但 e0 也 0，且 campaign 正常完成 | env 值在 `SFORGE_AGENT_EXTRA_ENV` 被逗号切碎（base64 bug 未生效） | 确认 bench ≥ `0a3eab0`、goal-plus ≥ `f40c3ca`；重新 `launch` 前先清旧 run；仍 0 则读 frozen_spec 排查 overlay 是否写入 `strategy.verifier` |
+| M1 | `prepare` 报 `require_search_strategy_overlay` 失败 | goal-plus 源缺 overlay | `git -C <goal-plus checkout> fetch origin && git -C <…> checkout llm-verifier-e1e5`（≥ `36ab3db`）；确认 P2 后重试 |
+| M2 | e1–e5 `verifier_records==0` 但 e0 也 0，且 campaign 正常完成 | env 值在 `SFORGE_AGENT_EXTRA_ENV` 被逗号切碎（base64 bug 未生效） | 确认 bench ≥ `bf9789c`、goal-plus ≥ `4e1abb8`；重新 `launch` 前先清旧 run；仍 0 则读 frozen_spec 排查 overlay 是否写入 `strategy.verifier` |
 | M3 | e1–e5 `verifier_records==0`，且 frozen_spec 里 `strategy.verifier` 为空 | overlay 未应用 | 检查 goal-plus 进程环境是否含 `GOAL_PLUS_CONTROLLER_SEARCH_STRATEGY`（base64）；缺则查 runtime.py 注入路径；记录为**新 bug 待查**，不要硬跑 |
 | M4 | `sat.available == false` 或归档缺 `goal-plus-state.tar` / frozen_spec | 归档未包含机制数据 | 修 edgebench-native runner 的归档逻辑，补 `goal-plus-state.tar` + `frozen_spec` 进最终产物；重跑该 cell |
 | M5 | campaign `partial` / `failed` / `timed_out` | 环境、鉴权、资源、超时 | 读 `controller.log` / `judge.log` 定位；非代码问题则清障后重跑该 cell；代码问题记录并修复 |
@@ -208,8 +208,8 @@ print(f"ALL {len(rows)} VALID")
 
 1. **goal-plus 源指向错 fork**（`upstreams.json` → 已改私仓 `dairenjie/muyuan@llm-verifier-e1e5`）；
 2. **pre-flight 缺 overlay 检查**（`require_search_strategy_overlay` → 已加）；
-3. **env 值逗号被切碎**（base64url 编码 → bench `0a3eab0` + goal-plus `f40c3ca` 已修）；
-4. **score-only steering 被 findings 挡住**（`application/steering.py` 只在契约启用 diagnostics 时要求 findings → `77dd8b4` 已修）；
-5. **gated 记录必须仍产生 Record**（`VerifierRecord.outcome="gated"`，不产生 lineage gap → `fb9f2cf` 已加）。
+3. **env 值逗号被切碎**（base64url 编码 → bench `bf9789c` + goal-plus `4e1abb8` 已修）；
+4. **score-only steering 被 findings 挡住**（`application/steering.py` 只在契约启用 diagnostics 时要求 findings → `36ab3db` 已修）；
+5. **gated 记录必须仍产生 Record**（`VerifierRecord.outcome="gated"`，不产生 lineage gap → `14eef56` 已加）。
 
 这五点是 e1–e5 全 0 与 VLIW 策略无法生效的直接原因；复跑若再出现 `verifier_records==0`，即为**新 bug**，按 M3 记录并停下来报告。
