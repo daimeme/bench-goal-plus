@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "id": "vliw-goal-plus-codex-gpt-5-6-sol-1h-k4-c1",
-  "description": "VLIW kernel optimization: Goal Plus + Codex, gpt-5.6-sol medium, T=3600, K=4, C=1, R=1.",
+  "id": "vliw-goal-plus-codex-gpt-5-6-sol-30m-k4-c1",
+  "description": "VLIW kernel optimization: Goal Plus + Codex, gpt-5.6-sol medium, T=1800, K=4, C=1, R=1.",
   "protocol_source": "edgebench-official-codex",
   "backend": "docker",
   "dataset_repository": "ByteDance-Seed/EdgeBench",
@@ -18,9 +18,9 @@
   "shared_dir_enabled": false,
   "supplemental_evaluation_enabled": false,
   "reasoning_effort": "medium",
-  "wall_time_seconds": 3600,
+  "wall_time_seconds": 1800,
   "concurrency": 4,
-  "worker_runtime_seconds": 3000,
+  "worker_runtime_seconds": 1500,
   "goal_plus_verifier_timeout_seconds": 120,
   "goal_plus_finalization_grace_seconds": 300,
   "cell_concurrency": 1,
@@ -38,12 +38,12 @@
     "judge_concurrency": "judge_concurrency=1 caps official Judge execution",
     "model": "resolved campaign model=gpt-5.6-sol",
     "reasoning_effort": "resolved reasoning_effort=medium",
-    "timeout": "T=3600 seconds per task trajectory or Search run",
+    "timeout": "T=1800 seconds per task trajectory or Search run",
     "eval_interval": "effective hidden-Judge eval_interval=300 seconds",
     "internet": "effective internet=false from profile override"
   },
   "worker_min_verifier_runs": 1,
-  "closeout_reserve_seconds": 600,
+  "closeout_reserve_seconds": 300,
   "deterministic": true,
   "sampling_seed": 1
 }
