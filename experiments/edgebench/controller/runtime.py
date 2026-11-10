@@ -17,8 +17,9 @@ from typing import Any, Iterable
 
 from bench_runtime_paths import configure_temp_environment
 from bench_goal_plus.search_strategy import (
+    SHARED_KNOWLEDGE_ENV,
+    goal_plus_feature_environment,
     resolve_search_strategy_arm,
-    search_strategy_controller_environment,
 )
 
 from . import io
@@ -301,14 +302,19 @@ def cell_environment(
             ),
         }
         search_strategy_arm = cell.get("search_strategy_arm")
-        if search_strategy_arm:
-            extra_env.update(
-                search_strategy_controller_environment(
+        extra_env.pop("GOAL_PLUS_CONTROLLER_SEARCH_STRATEGY", None)
+        extra_env.pop(SHARED_KNOWLEDGE_ENV, None)
+        extra_env.update(
+            goal_plus_feature_environment(
+                search_strategy=(
                     resolve_search_strategy_arm(str(search_strategy_arm))
-                )
+                    if search_strategy_arm
+                    else None
+                ),
+                shared_dir=bool(cell.get("shared_dir_enabled", False)),
+                shared_knowledge=bool(cell.get("shared_knowledge_enabled", False)),
             )
-        else:
-            extra_env.pop("GOAL_PLUS_CONTROLLER_SEARCH_STRATEGY", None)
+        )
         if cell["method"] in {"goal-plus-pi", "goal-plus-pi-provider"}:
             extra_env.update(
                 {

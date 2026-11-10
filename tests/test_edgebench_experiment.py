@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import importlib.util
 import io
 import json
@@ -27,13 +28,21 @@ EDGE = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = EDGE
 SPEC.loader.exec_module(EDGE)
 
-from experiments.edgebench.controller import io as EDGE_IO
 from experiments.edgebench.controller import cli as EDGE_CLI
+from experiments.edgebench.controller import io as EDGE_IO
 from experiments.edgebench.controller import environment as EDGE_ENV
 from experiments.edgebench.controller import evidence as EDGE_EVIDENCE
 from experiments.edgebench.controller import profiles as EDGE_PROFILES
 from experiments.edgebench.controller import reporting as EDGE_REPORTING
 from experiments.edgebench.controller import runtime as EDGE_RUNTIME
+
+
+def _decode_overlay(encoded: str) -> dict:
+    """Decode a controller overlay exactly as the worker environment carries it."""
+
+    return json.loads(
+        base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)).decode("utf-8")
+    )
 
 
 class EdgeBenchExperimentTest(unittest.TestCase):
@@ -98,6 +107,7 @@ class EdgeBenchExperimentTest(unittest.TestCase):
             payload["runtime_configuration"]["goal_plus"],
             {
                 "shared_dir_enabled": False,
+                "shared_knowledge_enabled": False,
                 "supplemental_evaluation_enabled": False,
             },
         )
@@ -825,10 +835,16 @@ class EdgeBenchExperimentTest(unittest.TestCase):
             "vliw-goal-plus-pi-zai-glm-5-2-1h-k2-c1"
         )
         self.assertFalse(profile["shared_dir_enabled"])
+        self.assertFalse(profile["shared_knowledge_enabled"])
         self.assertFalse(profile["supplemental_evaluation_enabled"])
+
+        _, shared = EDGE.load_profile("vliw-goal-plus-codex-gpt-5-6-sol-30m-k4-c1")
+        self.assertTrue(shared["shared_dir_enabled"])
+        self.assertTrue(shared["shared_knowledge_enabled"])
 
         for field in (
             "shared_dir_enabled",
+            "shared_knowledge_enabled",
             "supplemental_evaluation_enabled",
         ):
             with self.subTest(field=field):
@@ -2100,6 +2116,74 @@ class EdgeBenchExperimentTest(unittest.TestCase):
         self.assertEqual(
             enabled_extra["GOAL_PLUS_SUPPLEMENTAL_EVALUATION_REQUIRED"], "1"
         )
+        self.assertEqual(
+            _decode_overlay(enabled_extra["GOAL_PLUS_CONTROLLER_SEARCH_STRATEGY"]),
+            {"shared_dir": {"enabled": True}},
+        )
+        self.assertNotIn("GOAL_PLUS_CONTROLLER_SHARED_KNOWLEDGE", enabled_extra)
+
+    def test_goal_plus_features_transport_freeze_overlays(self) -> None:
+        base = {
+            "method": "goal-plus-codex",
+            "model": "gpt-5.6-sol",
+            "reasoning_effort": "medium",
+            "internet": False,
+            "inner_search_concurrency": 4,
+            "worker_runtime_seconds": 600,
+            "supplemental_evaluation_enabled": False,
+        }
+        disabled = EDGE.cell_environment(
+            {**base, "shared_dir_enabled": False, "shared_knowledge_enabled": False},
+            api_base_urls=["https://api.example.invalid/v1"],
+        )
+        disabled_extra = dict(
+            item.split("=", 1)
+            for item in disabled["SFORGE_AGENT_EXTRA_ENV"].split(",")
+        )
+        self.assertNotIn("GOAL_PLUS_CONTROLLER_SEARCH_STRATEGY", disabled_extra)
+        self.assertNotIn("GOAL_PLUS_CONTROLLER_SHARED_KNOWLEDGE", disabled_extra)
+
+        enabled = EDGE.cell_environment(
+            {**base, "shared_dir_enabled": True, "shared_knowledge_enabled": True},
+            api_base_urls=["https://api.example.invalid/v1"],
+        )
+        extra = dict(
+            item.split("=", 1) for item in enabled["SFORGE_AGENT_EXTRA_ENV"].split(",")
+        )
+        self.assertEqual(
+            _decode_overlay(extra["GOAL_PLUS_CONTROLLER_SEARCH_STRATEGY"]),
+            {"shared_dir": {"enabled": True}},
+        )
+        self.assertEqual(
+            _decode_overlay(extra["GOAL_PLUS_CONTROLLER_SHARED_KNOWLEDGE"]),
+            {"enabled": True},
+        )
+
+    def test_goal_plus_feature_overlay_keeps_the_strategy_arm(self) -> None:
+        env = EDGE.cell_environment(
+            {
+                "method": "goal-plus-codex",
+                "model": "gpt-5.6-sol",
+                "reasoning_effort": "medium",
+                "internet": False,
+                "inner_search_concurrency": 4,
+                "worker_runtime_seconds": 600,
+                "shared_dir_enabled": True,
+                "shared_knowledge_enabled": False,
+                "supplemental_evaluation_enabled": False,
+                "search_strategy_arm": "e7",
+            },
+            api_base_urls=["https://api.example.invalid/v1"],
+        )
+        extra = dict(
+            item.split("=", 1) for item in env["SFORGE_AGENT_EXTRA_ENV"].split(",")
+        )
+        overlay = _decode_overlay(extra["GOAL_PLUS_CONTROLLER_SEARCH_STRATEGY"])
+
+        self.assertEqual(overlay["initial_context"], "fresh")
+        self.assertEqual(overlay["shared_dir"], {"enabled": True})
+        self.assertIn("adaptive_search", overlay)
+        self.assertNotIn("GOAL_PLUS_CONTROLLER_SHARED_KNOWLEDGE", extra)
 
     def test_goal_plus_pi_environment_uses_the_same_runtime_contract(self) -> None:
         env = EDGE.cell_environment(

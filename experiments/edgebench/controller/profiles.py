@@ -64,6 +64,7 @@ GOAL_PLUS_METHODS = frozenset(
 GLOBAL_EVIDENCE_MODES = frozenset({"manual", "auto", "independent"})
 GOAL_PLUS_FEATURE_FLAGS = (
     "shared_dir_enabled",
+    "shared_knowledge_enabled",
     "supplemental_evaluation_enabled",
 )
 CLAUDE_REASONING_EFFORTS = frozenset(

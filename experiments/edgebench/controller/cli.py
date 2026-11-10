@@ -96,6 +96,9 @@ def main(argv: list[str] | None = None) -> int:
                                 "shared_dir_enabled": bool(
                                     profile.get("shared_dir_enabled", False)
                                 ),
+                                "shared_knowledge_enabled": bool(
+                                    profile.get("shared_knowledge_enabled", False)
+                                ),
                                 "supplemental_evaluation_enabled": bool(
                                     profile.get(
                                         "supplemental_evaluation_enabled", False

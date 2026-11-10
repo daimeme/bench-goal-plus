@@ -168,6 +168,9 @@ def prepare(args: argparse.Namespace, profile: dict[str, Any]) -> Path:
     goal_plus_feature_config = (
         {
             "shared_dir_enabled": bool(profile.get("shared_dir_enabled", False)),
+            "shared_knowledge_enabled": bool(
+                profile.get("shared_knowledge_enabled", False)
+            ),
             "supplemental_evaluation_enabled": bool(
                 profile.get("supplemental_evaluation_enabled", False)
             ),
@@ -242,8 +245,18 @@ def prepare(args: argparse.Namespace, profile: dict[str, Any]) -> Path:
             raise ValueError(
                 f"Goal Plus source validation failed: {goal_plus_source['error']}"
             )
-        if search_strategy_arm is not None:
-            require_search_strategy_overlay(Path(str(goal_plus_source["source_dir"])))
+        if (
+            search_strategy_arm is not None
+            or resolved_execution_profile.get("shared_dir_enabled")
+            or resolved_execution_profile.get("shared_knowledge_enabled")
+        ):
+            require_search_strategy_overlay(
+                Path(str(goal_plus_source["source_dir"])),
+                shared_dir=bool(resolved_execution_profile.get("shared_dir_enabled")),
+                shared_knowledge=bool(
+                    resolved_execution_profile.get("shared_knowledge_enabled")
+                ),
+            )
     profile_protocol_overrides = dict(profile.get("protocol_overrides") or {})
     allowed_protocol_override_fields = ALLOWED_PROTOCOL_OVERRIDE_FIELDS | set(
         profile_protocol_overrides

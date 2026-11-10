@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 SEARCH_STRATEGY_ENV = "GOAL_PLUS_CONTROLLER_SEARCH_STRATEGY"
+SHARED_KNOWLEDGE_ENV = "GOAL_PLUS_CONTROLLER_SHARED_KNOWLEDGE"
 
 DIAGNOSTIC_SCORE_KEYS = [
     "correctness_gap",
@@ -139,22 +140,53 @@ def search_strategy_controller_environment(
 
     if not strategy:
         return {}
+    return {SEARCH_STRATEGY_ENV: _encode_overlay(strategy)}
+
+
+def _encode_overlay(payload: Mapping[str, Any]) -> str:
     try:
-        payload = json.dumps(dict(strategy), separators=(",", ":")).encode("utf-8")
+        raw = json.dumps(dict(payload), separators=(",", ":")).encode("utf-8")
     except (TypeError, ValueError) as exc:  # noqa: BLE001 - surfaced verbatim
-        raise ValueError(f"search strategy is not JSON-serializable: {exc}") from exc
-    encoded = base64.urlsafe_b64encode(payload).decode("ascii")
-    return {SEARCH_STRATEGY_ENV: encoded}
+        raise ValueError(f"overlay is not JSON-serializable: {exc}") from exc
+    return base64.urlsafe_b64encode(raw).decode("ascii")
 
 
-def require_search_strategy_overlay(goal_plus_root: Path) -> None:
+def goal_plus_feature_environment(
+    *,
+    search_strategy: Mapping[str, Any] | None = None,
+    shared_dir: bool = False,
+    shared_knowledge: bool = False,
+) -> dict[str, str]:
+    """Return the overlays that enable Goal Plus capabilities at freeze time.
+
+    ``shared_dir`` and ``shared_knowledge`` are controller-owned: the campaign
+    decides them, never the agent's instruction following.  ``shared_dir``
+    rides the search-strategy overlay because both are applied by the same
+    freeze hook; ``shared_knowledge`` has its own channel.
+    """
+
+    overlay = dict(search_strategy or {})
+    if shared_dir:
+        overlay["shared_dir"] = {"enabled": True}
+    environment = search_strategy_controller_environment(overlay)
+    if shared_knowledge:
+        environment[SHARED_KNOWLEDGE_ENV] = _encode_overlay({"enabled": True})
+    return environment
+
+
+def require_search_strategy_overlay(
+    goal_plus_root: Path,
+    *,
+    shared_dir: bool = False,
+    shared_knowledge: bool = False,
+) -> None:
     """Fail before prepare when the selected Goal Plus source lacks the overlay.
 
-    The controller exports ``GOAL_PLUS_CONTROLLER_SEARCH_STRATEGY``, but the
-    overlay only takes effect if the selected Goal Plus source carries
-    ``apply_controller_search_strategy_overlay``.  Without this check a
-    ``search_strategy_arm`` campaign silently runs as a hard-only search and
-    produces zero verifier records, so it must fail at prepare time instead.
+    The controller exports ``GOAL_PLUS_CONTROLLER_SEARCH_STRATEGY`` and
+    ``GOAL_PLUS_CONTROLLER_SHARED_KNOWLEDGE``, but they only take effect if the
+    selected Goal Plus source carries the matching freeze-time hooks.  Without
+    this check a campaign silently runs without the arm or without the shared
+    capability it claims to enable, so it must fail at prepare time instead.
     """
 
     overlay = (
@@ -166,33 +198,42 @@ def require_search_strategy_overlay(goal_plus_root: Path) -> None:
     )
     if not overlay.is_file():
         raise RuntimeError(
-            "search-strategy arms require a Goal Plus source with the controller "
-            "search-strategy overlay; the selected source has no "
+            "search-strategy arms and shared capabilities require a Goal Plus "
+            "source with the controller overlay; the selected source has no "
             f"{overlay.relative_to(goal_plus_root)}"
         )
     text = overlay.read_text(encoding="utf-8")
-    missing = [
-        token
-        for token in (
-            "CONTROLLER_SEARCH_STRATEGY_ENV",
-            "apply_controller_search_strategy_overlay",
-        )
-        if token not in text
+    required = [
+        "CONTROLLER_SEARCH_STRATEGY_ENV",
+        "apply_controller_search_strategy_overlay",
     ]
+    if shared_dir:
+        # The strategy overlay must accept the ``shared_dir`` field.
+        required.append("shared_dir")
+    if shared_knowledge:
+        required.extend(
+            (
+                "CONTROLLER_SHARED_KNOWLEDGE_ENV",
+                "apply_controller_shared_knowledge_overlay",
+            )
+        )
+    missing = [token for token in required if token not in text]
     if missing:
         raise RuntimeError(
             "the selected Goal Plus source has a controller overlay without "
-            f"search-strategy support (missing {', '.join(missing)}); point the "
-            "goal-plus upstream at a revision that includes the search-strategy "
-            "overlay before running search_strategy_arm campaigns"
+            f"the required support (missing {', '.join(missing)}); point the "
+            "goal-plus upstream at a revision that includes the controller "
+            "overlays before running this campaign"
         )
 
 
 __all__ = [
     "SEARCH_STRATEGY_ENV",
+    "SHARED_KNOWLEDGE_ENV",
     "DIAGNOSTIC_SCORE_KEYS",
     "VLIW_OPTIMIZER_SCORE_KEYS",
     "SEARCH_STRATEGY_ARMS",
+    "goal_plus_feature_environment",
     "resolve_search_strategy_arm",
     "search_strategy_controller_environment",
     "require_search_strategy_overlay",

@@ -165,6 +165,40 @@ class SearchStrategyContractTest(unittest.TestCase):
             )
             require_search_strategy_overlay(root)  # must not raise
 
+    def test_require_overlay_covers_the_shared_capabilities(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            overlay = (
+                root / "src" / "goal_plus" / "application" / "controller_overlay.py"
+            )
+            overlay.parent.mkdir(parents=True)
+            # A source with the strategy hook but no shared_dir field.
+            overlay.write_text(
+                'CONTROLLER_SEARCH_STRATEGY_ENV = "GOAL_PLUS_CONTROLLER_SEARCH_STRATEGY"\n'
+                "def apply_controller_search_strategy_overlay(spec, raw):\n"
+                "    return spec\n",
+                encoding="utf-8",
+            )
+            require_search_strategy_overlay(root)
+            with self.assertRaises(RuntimeError):
+                require_search_strategy_overlay(root, shared_dir=True)
+            with self.assertRaises(RuntimeError):
+                require_search_strategy_overlay(root, shared_knowledge=True)
+
+            overlay.write_text(
+                'CONTROLLER_SEARCH_STRATEGY_ENV = "GOAL_PLUS_CONTROLLER_SEARCH_STRATEGY"\n'
+                'CONTROLLER_SHARED_KNOWLEDGE_ENV = "GOAL_PLUS_CONTROLLER_SHARED_KNOWLEDGE"\n'
+                "def apply_controller_search_strategy_overlay(spec, raw):\n"
+                "    return spec\n"
+                "def apply_controller_shared_knowledge_overlay(spec, raw):\n"
+                "    return spec\n"
+                "shared_dir = None\n",
+                encoding="utf-8",
+            )
+            require_search_strategy_overlay(
+                root, shared_dir=True, shared_knowledge=True
+            )  # must not raise
+
 
 if __name__ == "__main__":
     unittest.main()
