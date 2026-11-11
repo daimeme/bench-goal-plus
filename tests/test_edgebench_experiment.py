@@ -2878,6 +2878,23 @@ class EdgeBenchExperimentTest(unittest.TestCase):
         self.assertIn("goal_plus_monitor_snapshot exactly twice", command[-1])
         self.assertNotIn("rotating-secret-value", json.dumps(result))
 
+    def test_managed_goal_plus_source_must_match_the_manifest_pin(self) -> None:
+        root = self.test_paths.goal_plus_root
+        head = EDGE_IO.git_head(root)
+        branch = EDGE_IO.git_branch(root)
+        paths = SimpleNamespace(goal_plus_root=root)
+
+        def resolve(pinned: str) -> dict:
+            entry = {"tracking_branch": branch, "expected_commit": pinned}
+            with mock.patch.object(EDGE_ENV, "current_paths", lambda: paths), \
+                mock.patch.object(
+                    EDGE_ENV.io, "upstream_entry", lambda name: entry
+                ):
+                return EDGE_ENV.resolve_goal_plus_source()
+
+        self.assertNotIn("manifest pin", resolve(head)["error"])
+        self.assertIn("manifest pin", resolve("0" * 40)["error"])
+
     def test_codex_goal_plus_host_probe_rejects_generic_tool_roundtrip(self) -> None:
         resolved_source = {
             "valid": True,

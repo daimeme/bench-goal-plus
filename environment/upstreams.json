@@ -20,7 +20,8 @@
       "source_subdir": "plugins/goal-plus",
       "tracking_branch": "llm-verifier-e1e5",
       "always": true,
-      "editable": true
+      "editable": true,
+      "expected_commit": "5887d1473916d5f6abbcd9657ccd02c4af4ca51c"
     },
     "aibench_coding": {
       "repository": "https://gitcode.com/caohaotiantian/muyuan.git",

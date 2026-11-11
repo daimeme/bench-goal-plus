@@ -722,6 +722,14 @@ def resolve_goal_plus_source(
     configured_ref = expected_ref or source.get("SFORGE_GOAL_PLUS_EXPECTED_REF")
     if not external and configured_ref is None:
         configured_ref = str(io.upstream_entry("goal_plus")["tracking_branch"])
+    # A managed checkout is versioned by the manifest, not by whatever commit
+    # `git pull` happened to leave behind.  External sources keep their own
+    # ref contract and are skipped here.
+    pinned_commit = (
+        None
+        if external
+        else str(io.upstream_entry("goal_plus").get("expected_commit") or "") or None
+    )
 
     errors: list[str] = []
     if external and not configured_ref:
@@ -784,6 +792,13 @@ def resolve_goal_plus_source(
             if expected_commit and commit != expected_commit:
                 errors.append(
                     "Goal Plus HEAD changed after the campaign source was frozen"
+                )
+            if pinned_commit and commit != pinned_commit:
+                errors.append(
+                    "Goal Plus HEAD "
+                    f"{str(commit)[:7]} does not match the manifest pin "
+                    f"{pinned_commit[:7]}; fast-forward third_party/muyuan and "
+                    "update expected_commit together"
                 )
 
     required_assets, asset_alternatives = goal_plus_runtime_asset_contract(methods)
