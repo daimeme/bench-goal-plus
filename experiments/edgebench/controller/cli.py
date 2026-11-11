@@ -104,6 +104,12 @@ def main(argv: list[str] | None = None) -> int:
                                         "supplemental_evaluation_enabled", False
                                     )
                                 ),
+                                "worker_sandbox_mode": str(
+                                    profile.get(
+                                        "worker_sandbox_mode",
+                                        "workspace-write",
+                                    )
+                                ),
                             }
                         }
                         if set(profile["methods"]) & GOAL_PLUS_METHODS

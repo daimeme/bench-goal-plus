@@ -109,6 +109,7 @@ class EdgeBenchExperimentTest(unittest.TestCase):
                 "shared_dir_enabled": False,
                 "shared_knowledge_enabled": False,
                 "supplemental_evaluation_enabled": False,
+                "worker_sandbox_mode": "workspace-write",
             },
         )
 
@@ -841,6 +842,16 @@ class EdgeBenchExperimentTest(unittest.TestCase):
         _, shared = EDGE.load_profile("vliw-goal-plus-codex-gpt-5-6-sol-30m-k4-c1")
         self.assertTrue(shared["shared_dir_enabled"])
         self.assertTrue(shared["shared_knowledge_enabled"])
+        self.assertEqual(shared["worker_sandbox_mode"], "danger-full-access")
+
+        invalid_mode = {**shared, "worker_sandbox_mode": "bubblewrap"}
+        path = self.temp / "invalid-worker-sandbox.json"
+        path.write_text(json.dumps(invalid_mode), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "worker_sandbox_mode"):
+            EDGE.load_profile(path)
+
+        _, defaulted = EDGE.load_profile("vliw-goal-plus-pi-zai-glm-5-2-1h-k2-c1")
+        self.assertEqual(defaulted["worker_sandbox_mode"], "workspace-write")
 
         for field in (
             "shared_dir_enabled",
@@ -2184,6 +2195,47 @@ class EdgeBenchExperimentTest(unittest.TestCase):
         self.assertEqual(overlay["shared_dir"], {"enabled": True})
         self.assertIn("adaptive_search", overlay)
         self.assertNotIn("GOAL_PLUS_CONTROLLER_SHARED_KNOWLEDGE", extra)
+
+    def test_worker_sandbox_mode_reaches_the_worker_environment(self) -> None:
+        base = {
+            "method": "goal-plus-codex",
+            "model": "gpt-5.6-sol",
+            "reasoning_effort": "medium",
+            "internet": False,
+            "inner_search_concurrency": 4,
+            "worker_runtime_seconds": 600,
+            "shared_dir_enabled": False,
+            "shared_knowledge_enabled": False,
+            "supplemental_evaluation_enabled": False,
+        }
+
+        def extra_for(cell: dict) -> dict:
+            env = EDGE.cell_environment(
+                cell, api_base_urls=["https://api.example.invalid/v1"]
+            )
+            return dict(
+                item.split("=", 1)
+                for item in env["SFORGE_AGENT_EXTRA_ENV"].split(",")
+            )
+
+        # A container cannot create the user namespace workspace-write needs.
+        self.assertEqual(
+            extra_for({**base, "worker_sandbox_mode": "danger-full-access"})[
+                "GOAL_PLUS_WORKER_SANDBOX"
+            ],
+            "host",
+        )
+        self.assertEqual(
+            extra_for({**base, "worker_sandbox_mode": "workspace-write"})[
+                "GOAL_PLUS_WORKER_SANDBOX"
+            ],
+            "workspace",
+        )
+        # An unset profile keeps the documented default rather than inheriting
+        # an ambient "host" from the launching shell.
+        self.assertEqual(
+            extra_for(base)["GOAL_PLUS_WORKER_SANDBOX"], "workspace"
+        )
 
     def test_goal_plus_pi_environment_uses_the_same_runtime_contract(self) -> None:
         env = EDGE.cell_environment(

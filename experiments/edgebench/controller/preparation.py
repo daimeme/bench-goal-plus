@@ -29,6 +29,7 @@ from .environment import (
 )
 from .profiles import (
     ALLOWED_PROTOCOL_OVERRIDE_FIELDS,
+    DEFAULT_WORKER_SANDBOX_MODE,
     GOAL_PLUS_METHODS,
     METHODS,
     OFFICIAL_SCHEDULED_RUNS,
@@ -173,6 +174,9 @@ def prepare(args: argparse.Namespace, profile: dict[str, Any]) -> Path:
             ),
             "supplemental_evaluation_enabled": bool(
                 profile.get("supplemental_evaluation_enabled", False)
+            ),
+            "worker_sandbox_mode": str(
+                profile.get("worker_sandbox_mode", DEFAULT_WORKER_SANDBOX_MODE)
             ),
         }
         if has_goal_plus

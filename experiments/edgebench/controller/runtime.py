@@ -48,6 +48,7 @@ from .environment import (
     task_images,
 )
 from .profiles import (
+    DEFAULT_WORKER_SANDBOX_MODE,
     GOAL_PLUS_METHODS,
     METHODS,
     api_protocol_for_methods,
@@ -289,6 +290,17 @@ def cell_environment(
             "SFORGE_GOAL_PLUS_SHARED_DIR_ENABLED": str(
                 bool(cell.get("shared_dir_enabled", False))
             ).lower(),
+            # Goal Plus reads "host" as "do not wrap worker Codex in a sandbox".
+            # A container cannot create the unprivileged user namespace that
+            # workspace-write needs, so the profile must opt in explicitly.
+            "GOAL_PLUS_WORKER_SANDBOX": (
+                "host"
+                if str(
+                    cell.get("worker_sandbox_mode") or DEFAULT_WORKER_SANDBOX_MODE
+                )
+                == "danger-full-access"
+                else "workspace"
+            ),
             "GOAL_PLUS_SUPPLEMENTAL_EVALUATION_ENABLED": (
                 "1" if cell.get("supplemental_evaluation_enabled", False) else "0"
             ),

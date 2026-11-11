@@ -67,6 +67,13 @@ GOAL_PLUS_FEATURE_FLAGS = (
     "shared_knowledge_enabled",
     "supplemental_evaluation_enabled",
 )
+# Goal Plus launches worker Codex with `workspace-write` unless the run says
+# otherwise.  Inside a container that policy needs an unprivileged user
+# namespace, which most kernels refuse, so every worker dies before it can
+# touch the task.  Profiles that run workers in a container must say so
+# explicitly instead of inheriting a default that cannot work.
+WORKER_SANDBOX_MODES = frozenset({"workspace-write", "danger-full-access"})
+DEFAULT_WORKER_SANDBOX_MODE = "workspace-write"
 CLAUDE_REASONING_EFFORTS = frozenset(
     {"none", "minimal", "low", "medium", "high", "xhigh", "max"}
 )
@@ -264,10 +271,18 @@ def load_profile(value: str | Path) -> tuple[Path, dict[str, Any]]:
             if not isinstance(value, bool):
                 raise ValueError(f"{field} must be boolean")
             profile[field] = value
+        worker_sandbox_mode = profile.get(
+            "worker_sandbox_mode", DEFAULT_WORKER_SANDBOX_MODE
+        )
+        if worker_sandbox_mode not in WORKER_SANDBOX_MODES:
+            allowed = ", ".join(sorted(WORKER_SANDBOX_MODES))
+            raise ValueError(f"worker_sandbox_mode must be one of {allowed}")
+        profile["worker_sandbox_mode"] = worker_sandbox_mode
     else:
         goal_plus_fields = {
             "search_strategy_arm",
             "global_evidence_mode",
+            "worker_sandbox_mode",
             *GOAL_PLUS_FEATURE_FLAGS,
         }
         configured = sorted(goal_plus_fields & set(profile))

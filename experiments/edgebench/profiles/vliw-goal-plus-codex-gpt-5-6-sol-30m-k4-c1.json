@@ -17,6 +17,7 @@
   "global_evidence_mode": "manual",
   "shared_dir_enabled": true,
   "shared_knowledge_enabled": true,
+  "worker_sandbox_mode": "danger-full-access",
   "supplemental_evaluation_enabled": false,
   "reasoning_effort": "medium",
   "wall_time_seconds": 1800,
