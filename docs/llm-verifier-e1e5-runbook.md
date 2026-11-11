@@ -187,6 +187,7 @@ print(f"ALL {len(rows)} VALID")
 | M6 | `seed` 与 profile 不符 | profile/启动串了 | 重跑该条，确认 `--profile` 用的 `-s{seed}` 与目标一致 |
 | M7 | 缺 Docker/鉴权/镜像 | 前置环境 | `python3 scripts/bench.py setup --benchmark edgebench --profile vliw-smoke` + `check --environment`，按报错补齐（不读取/记录凭据内容） |
 | M8 | e6/e7 的 `verifier_gated_records == 0`，但 `verifier_records > 0` | 门禁未生效：`strategy.verifier.gate` 为 false 或 `attempt_changed_files` 判定异常 | 读 frozen_spec 确认 `gate: true`；若为 true 仍 0，检查 settlement evidence 的 `attempt_changed_files` 是否恒为空（判定会全部 gated，反而应出现 gated>0）；记录并报告 |
+| M9 | 候选全部停在基线分（或只有一条产生改动），worker 从不产出 artifact | worker Codex 用了 `workspace-write`；容器内核不允许非特权 user namespace，worker 启动即失败 | 确认 profile 有 `worker_sandbox_mode: danger-full-access`（bench 映射为 `GOAL_PLUS_WORKER_SANDBOX=host`）；`campaign.json` 的 `worker_sandbox_mode` 与 `frozen_spec.strategy` 一并核对后重跑该 cell |
 
 **自愈纪律**：修复只做"定位→改一处→重跑该 campaign"，不得手改 `.gp/`、不得伪造 `verifier_records`、不得把缺失当 0。修不动的记入 `open-issues` 并停下来报告。
 
