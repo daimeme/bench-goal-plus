@@ -21,7 +21,7 @@
       "tracking_branch": "llm-verifier-e1e5",
       "always": true,
       "editable": true,
-      "expected_commit": "5887d1473916d5f6abbcd9657ccd02c4af4ca51c"
+      "expected_commit": "329f8a0559f3789c1089712dc8f476dfdd6a40b1"
     },
     "aibench_coding": {
       "repository": "https://gitcode.com/caohaotiantian/muyuan.git",
